@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-body: "DM Sans", Arial, sans-serif;
+  --font-display: "Manrope", "DM Sans", Arial, sans-serif;
   --ink: #12372c;
   --green: #1f5b46;
   --mint: #baf2d2;
