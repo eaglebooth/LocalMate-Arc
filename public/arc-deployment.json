@@ -1,0 +1,16 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "contractAddress": "0x48c56612f4308466e38be6dacece86a736e7770e",
+  "jobId": "1",
+  "agentId": "851813",
+  "owner": "0xeb57bc7125fa60d7482CE12058397369AB3581f8",
+  "helper": "0x2da5393d7BBb9A037dc3abB56DbbC5C150fc843f",
+  "transactions": {
+    "deployment": "0xa311202ecbcb49aedccf85c5239d9623ceee5bd77b47c852ef758b3e87792f5c",
+    "create": "0xf773c1ba021db14240661678fc02691f3fb1e64b81f0a3c0956f55be3e7fbd83",
+    "complete": "0xd6bf1723b274fe7cee294acade71310ab15850ab17fc4bbaacacc21b6ca40e05",
+    "agentRegistration": "0xc49820ab3e31a443a635db469785ec5f5d89dfee09b642c22e3279f56e67088b",
+    "reputation": "0xdcf243be8232f9a3559cac1772f57cc24f2b65560c21163e07d4958c1970ed02"
+  }
+}

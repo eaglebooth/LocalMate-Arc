@@ -1,0 +1,39 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "version": "LocalMateJobsV3",
+  "contractAddress": "0xfec759cb31f16df8714ed847de92ae9300e4cc36",
+  "reviewPeriodSeconds": 60,
+  "tests": {
+    "providerConsentSignatureVerified": true,
+    "forgedConsentRejected": true,
+    "evidenceHashAnchored": true,
+    "evidenceUriHashAnchored": true,
+    "exactPayoutVerified": true,
+    "disputeSplitVerified": true,
+    "unassignedRefundVerified": true,
+    "escrowBalanceAfterTests": "0"
+  },
+  "jobs": {
+    "payout": "1",
+    "dispute": "2",
+    "cancellation": "3"
+  },
+  "transactions": {
+    "deployment": "0xd17d044fc73c3d4af3eecb3e365a255a65396adcb156c5e5617c8352cabd6c9e",
+    "payoutCreate": "0x14c0f552f2302d57368666ee7186bf02d57ed160a1651924de8bf464b88b57f6",
+    "payoutFund": "0x425b81f792e742c6bfadfdeeb99e82b83f30b5fc1c7fbb9a9aa15502349940fc",
+    "payoutAssign": "0x5202247988b9b54c76ece531318f1cbb55ec3cc5bc5367056ebdc7180b7f66ec",
+    "payoutSubmit": "0xeebbad36591557305ffe1a4d6a74e124e9be9db75aab32da56f9d436be6f67b0",
+    "payoutComplete": "0xf5e90730f21ecd038ae2791d8a78e332682dfa809dffe457fd1126620b06100a",
+    "disputeCreate": "0x9de69a5737afd001ec8ce9e1d2baeaacc378e9f61d0a6fca3f6144692b369fe5",
+    "disputeFund": "0x05b3cccdc491dc553262820ff62b6b790d71dfe0ae2002028fbff81b0699a0b9",
+    "disputeAssign": "0x86f496c853d3f2992ee7d79581a91c26af18dbfc7829d2f27c20ca4c7dad1ad1",
+    "disputeSubmit": "0x075ef8fccb7183025e31e8dd8f60bcd45959847d3e8289cdaa212b6b7c478fea",
+    "disputeRaise": "0xcc563df1533428f8dc8a11e7d03fbab58c07197b99d301f5b07a064032c13cbc",
+    "disputeResolve": "0x995605936eba3c7d73b58cfc2653f5fe196edfe34ce32d88f2fce33ea1e9f3d1",
+    "cancellationCreate": "0xe0da564c0cd3e11be8c0312d0eb0cb45150514b94d39cd34400cabff55adc9f9",
+    "cancellationFund": "0x5c2c65baa41505547d2d3d58db415421e7cfbae84a24bb53f8dd325a857df330",
+    "cancellationRefund": "0xa6ff4ea7a05be54deee2d3aeb40c399d7c7f876462e7d2ba2e6a3cc710f8863b"
+  }
+}

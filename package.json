@@ -1,0 +1,52 @@
+{
+  "name": "localmate-arc",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vinext dev",
+    "build": "vinext build",
+    "start": "vinext start",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "db:generate": "drizzle-kit generate",
+    "arc:deploy-demo": "node --env-file=.env.deploy scripts/deploy-and-demo.mjs",
+    "arc:v2-test": "node --env-file=.env.deploy scripts/deploy-v2-and-test.mjs",
+    "arc:v3-test": "node --env-file=.env.deploy scripts/deploy-v3-and-test.mjs",
+    "arc:erc8183": "node --env-file=.env.deploy scripts/erc8183-official-demo.mjs",
+    "arc:nanopayment": "node --env-file=.env.deploy scripts/nanopayments-demo.mjs"
+  },
+  "dependencies": {
+    "@circle-fin/x402-batching": "^3.2.0",
+    "@x402/core": "^2.19.0",
+    "@x402/evm": "^2.19.0",
+    "drizzle-orm": "0.45.2",
+    "express": "^5.2.1",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "solc": "^0.8.36",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "viem": "^2.55.8",
+    "vinext": "0.0.50",
+    "vite": "8.0.13",
+    "wrangler": "4.92.0"
+  },
+  "type": "module"
+}

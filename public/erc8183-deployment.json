@@ -1,0 +1,13 @@
+{
+  "contractAddress": "0x0747EEf0706327138c69792bF28Cd525089e4583",
+  "jobId": "159489",
+  "status": "Completed",
+  "budget": "1.00 USDC",
+  "transactions": {
+    "create": "0x97d2330a4692ed82da5c9ba5dd55c68e9c56475a3f2819a8c1b15a33cc8eafb0",
+    "setBudget": "0xef04b14a5a152713bad01ef03bad8ebddf624a8c9c9555cbc732d8f2d385824d",
+    "fund": "0xd5c062fab5b8ee86c23fb3ee235027de0483723c652e78c5a7f9504fb997c9bc",
+    "submit": "0x2724fe5b06d02d36353aa7e9b085f89a296d6bfd5437d0ffe3d9bb748e5ff84e",
+    "complete": "0x751e9a0788a7d7d549639ba8fd1beedded1605a7a2de78c178c0f9fbbe3c2bf6"
+  }
+}

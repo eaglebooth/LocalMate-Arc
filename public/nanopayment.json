@@ -1,0 +1,10 @@
+{
+  "protocol": "x402",
+  "settlement": "Circle Gateway Nanopayments",
+  "network": "Arc Testnet",
+  "amount": "0.001",
+  "transaction": "17a75567-0ed3-4c4a-8c25-44594b3b0e55",
+  "status": 200,
+  "seller": "0x2da5393d7BBb9A037dc3abB56DbbC5C150fc843f",
+  "deposit": null
+}

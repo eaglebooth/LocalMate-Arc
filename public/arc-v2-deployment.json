@@ -1,0 +1,30 @@
+{
+  "network": "Arc Testnet",
+  "chainId": 5042002,
+  "version": "LocalMateJobsV2",
+  "contractAddress": "0x6695f4b55bf7dbc8b4c8315b1f9f87f24cd7a842",
+  "jobId": "1",
+  "status": "Completed",
+  "client": "0xeb57bc7125fa60d7482CE12058397369AB3581f8",
+  "provider": "0x2da5393d7BBb9A037dc3abB56DbbC5C150fc843f",
+  "budget": "0.10 USDC",
+  "providerPayment": "0.0975 USDC",
+  "platformFee": "0.0025 USDC",
+  "tests": {
+    "fundedBeforeProviderSelection": true,
+    "unauthorizedAssignmentReverted": true,
+    "unauthorizedSubmissionReverted": true,
+    "submittedRefundReverted": true,
+    "exactPayoutVerified": true,
+    "doublePayoutReverted": true,
+    "escrowBalanceAfterCompletion": "0"
+  },
+  "transactions": {
+    "deployment": "0x945ac92137e8c8ee77d1fff34631518443b2b5ec8aad8f25eb854641c2256c0d",
+    "create": "0x5fc13c014690b6ae94a7fb9784ee70ba9b634f749a60692f5e6e13d8a62d7810",
+    "fund": "0xfdfb264a8f9536736d85792528e71184ea69a383b8c7cfcf7b830792e2bb48b8",
+    "assign": "0xf233e18025f0ecfa4c61c95c03ed85702b6181973b6327a1e160907c356bdc26",
+    "submit": "0x7b2a2921cbffea3587b8ade965fd3d08ca6a8f99115631a946171796e2a657f2",
+    "complete": "0xb55bfb9954cab14a8b78076d98ad2b46b06fe7cfb13fb8743bc452245bd5a40c"
+  }
+}

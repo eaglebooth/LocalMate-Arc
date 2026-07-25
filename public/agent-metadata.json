@@ -1,0 +1,16 @@
+{
+  "name": "LocalMate Matching Agent",
+  "description": "Matches residents with trusted local helpers and coordinates ERC-8183-style USDC escrow jobs on Arc.",
+  "image": "/images/localmate-hero.png",
+  "agent_type": "local-services-coordinator",
+  "capabilities": [
+    "natural-language-task-parsing",
+    "task-specific-trust-review",
+    "local-helper-matching",
+    "budget-policy-enforcement",
+    "escrow-job-coordination"
+  ],
+  "version": "1.0.0",
+  "network": "Arc Testnet",
+  "chain_id": 5042002
+}
