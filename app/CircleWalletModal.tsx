@@ -82,7 +82,7 @@ export default function CircleWalletModal({
       });
       window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
       window.sessionStorage.removeItem("localmate-circle-login-pending");
-      onConnected(wallet, usdc?.amount ?? null);
+      onConnected(wallet, usdc?.amount ?? "0");
       onClose();
     }
 

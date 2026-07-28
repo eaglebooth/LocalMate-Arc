@@ -480,6 +480,16 @@ export default function Home() {
     setNotice("Wallet disconnected from LocalMate.");
   }
 
+  async function copyWalletAddress() {
+    if (!wallet) return;
+    try {
+      await navigator.clipboard.writeText(wallet);
+      setNotice("Wallet address copied.");
+    } catch {
+      setNotice(`Wallet address: ${wallet}`);
+    }
+  }
+
   const connectCircleWallet = useCallback(
     (connectedWallet: { id: string; address: string; blockchain: string }, balance: string | null) => {
       window.sessionStorage.removeItem("localmate-circle-login-pending");
@@ -1044,9 +1054,14 @@ export default function Home() {
                 <div className="wallet-menu">
                   <span>
                     <small>{walletKind === "circle" ? "Circle Wallet · Arc Testnet" : "Connected on Arc"}</small>
-                    <code>{wallet.slice(0, 8)}...{wallet.slice(-6)}</code>
-                    {walletKind === "circle" && circleBalance !== null && <small>{circleBalance} USDC</small>}
+                    <code title={wallet}>{wallet.slice(0, 8)}...{wallet.slice(-6)}</code>
+                    {walletKind === "circle" && (
+                      <strong className="wallet-balance">{circleBalance ?? "0"} USDC</strong>
+                    )}
                   </span>
+                  <button className="copy-address" onClick={() => void copyWalletAddress()}>
+                    Copy full address
+                  </button>
                   <button onClick={() => setCircleModal(true)}>Switch wallet</button>
                   <button className="disconnect" onClick={() => void disconnectWallet()}>Disconnect</button>
                 </div>

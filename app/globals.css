@@ -38,7 +38,9 @@ a { color: inherit; text-decoration: none; }
 .wallet-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 70; width: 220px; padding: 10px; border: 1px solid var(--line); border-radius: 13px; background: #fff; box-shadow: 0 18px 45px rgba(18,55,44,.16); }
 .wallet-menu > span { display: block; padding: 8px; border-bottom: 1px solid var(--line); }
 .wallet-menu small, .wallet-menu code { display: block; }.wallet-menu small { margin-bottom: 4px; color: #798b84; font-size: 8px; text-transform: uppercase; }.wallet-menu code { color: var(--ink); font-size: 10px; }
+.wallet-menu .wallet-balance { display: block; margin-top: 8px; color: #167b5b; font-size: 13px; }
 .wallet-menu button { width: 100%; margin-top: 6px; padding: 9px 10px; border: 0; border-radius: 8px; background: #edf4ef; color: var(--ink); text-align: left; font-size: 10px; font-weight: 800; cursor: pointer; }
+.wallet-menu button.copy-address { background: #dff8e9; color: #176449; }
 .wallet-menu button.disconnect { background: #fff0eb; color: #a44831; }
 .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: #51d995; box-shadow: 0 0 0 4px rgba(81,217,149,.13); }
 .menu-toggle { display: none; }
