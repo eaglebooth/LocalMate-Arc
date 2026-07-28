@@ -8,13 +8,13 @@ rejects or disputes settlement.
 ## Live Arc integration
 
 - Network: Arc Testnet (`5042002`)
-- Contract: `LocalMateJobsV3`
+- Contract: `LocalMateJobsV4`
 - Address: `0xfec759cb31f16df8714ed847de92ae9300e4cc36`
 - Settlement asset: Arc USDC
 - Explorer:
   https://testnet.arcscan.app/address/0xfec759cb31f16df8714ed847de92ae9300e4cc36
 
-The V3 test suite verified:
+The V4 test suite verified:
 
 - signed provider consent and forged-signature rejection;
 - job creation and USDC escrow funding;
@@ -30,9 +30,9 @@ The detailed deployment proof is stored in
 ## User journey
 
 1. A resident connects a wallet, writes a task and chooses the budget.
-2. LocalMate creates and funds a V3 job on Arc.
+2. LocalMate creates and funds a V4 job on Arc.
 3. Helpers discover funded jobs and apply with a wallet signature.
-4. The resident chooses an applicant; V3 verifies their signed consent.
+4. The resident chooses an applicant; V4 verifies EOA or Circle SCA signed consent.
 5. The helper uploads a photo, video or PDF deliverable.
 6. The file stays off-chain while its content hash and URI hash are recorded on
    Arc.
@@ -61,6 +61,7 @@ The live deployment test can be run with funded Arc Testnet wallets:
 
 ```bash
 npm run arc:v3-test
+npm run arc:v4-test
 ```
 
 Never commit test or production private keys.
@@ -68,9 +69,9 @@ Never commit test or production private keys.
 ## Repository map
 
 - `app/page.tsx`: Resident and Helper product flows
-- `contracts/LocalMateJobsV3.sol`: escrow and settlement contract
+- `contracts/LocalMateJobsV4.sol`: Circle SCA-compatible escrow and settlement contract
 - `worker/index.ts`: evidence upload and retrieval
-- `scripts/deploy-v3-and-test.mjs`: Arc deployment and end-to-end contract test
+- `scripts/deploy-v4-and-test.mjs`: Arc deployment and end-to-end contract test
 - `ARCHITECTURE.md`: current architecture and planned Agentic Economy modules
 - `ARC_INTEGRATION.md`: Arc configuration and integration notes
 
@@ -80,7 +81,7 @@ Live:
 
 - Arc Testnet
 - USDC escrow
-- V3 job lifecycle
+- V4 job lifecycle
 - wallet-signed applications
 - evidence anchoring
 - payout, refund and dispute settlement
@@ -91,7 +92,7 @@ Planned, not presented as live:
 - Circle Gateway/x402 nanopayments
 - official ERC-8183 reference contract integration
 
-LocalMate V3 follows an ERC-8183-style lifecycle but includes custom application
+LocalMate V4 follows an ERC-8183-style lifecycle but includes custom application
 consent, evidence and dispute extensions. It should not be described as the
 official ERC-8183 reference implementation.
 

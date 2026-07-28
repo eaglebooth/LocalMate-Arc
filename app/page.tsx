@@ -4,6 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parseUnits, toBytes } from "viem";
 import deploymentV3 from "../public/arc-v3-deployment.json";
 import CircleWalletModal from "./CircleWalletModal";
+import {
+  circleAction,
+  clearCircleWalletSession,
+  executeCircleChallenge,
+  getCircleWalletSession,
+} from "./circle-wallet-session";
 
 type Helper = {
   name: string;
@@ -171,7 +177,7 @@ const helpers: Helper[] = [
 ];
 
 const activity = [
-  ["V3 evidence payout", "Completed", "+0.0975 USDC", "verified onchain"],
+  ["V4 Circle-ready payout", "Completed", "+0.00975 USDC", "verified onchain"],
   ["Shelf assembly · Tower A", "Funded", "18.00 USDC", "4 min ago"],
   ["Home cleaning · Tower C", "Submitted", "14.00 USDC", "11 min ago"],
 ];
@@ -446,6 +452,7 @@ export default function Home() {
     setWallet("");
     setWalletKind("");
     setCircleBalance(null);
+    clearCircleWalletSession();
     setWalletMenu(false);
     setNotice("Wallet disconnected from LocalMate.");
   }
@@ -461,6 +468,7 @@ export default function Home() {
   );
 
   async function ensureArcNetwork() {
+    if (walletKind === "circle") return;
     const eth = injectedProvider();
     if (!eth) throw new Error("Install an EVM wallet before using Live Arc mode.");
     try {
@@ -480,6 +488,11 @@ export default function Home() {
   }
 
   async function activeAccount() {
+    if (walletKind === "circle") {
+      const session = getCircleWalletSession();
+      if (!session || !wallet) throw new Error("Reconnect your Circle Wallet to continue.");
+      return wallet;
+    }
     const eth = injectedProvider();
     if (!eth) throw new Error("Install an EVM wallet before using Live Arc mode.");
     const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
@@ -502,7 +515,65 @@ export default function Home() {
     throw new Error("Transaction confirmation timed out. Check Arcscan before retrying.");
   }
 
+  async function waitForPublicReceipt(hash: string) {
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const receipt = await arcPublicRpc("eth_getTransactionReceipt", [hash]) as { status?: string } | null;
+      if (receipt) {
+        if (receipt.status !== "0x1") throw new Error("The Circle Wallet transaction reverted on Arc.");
+        return;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+    throw new Error("Circle transaction confirmation timed out. Check Arcscan before retrying.");
+  }
+
+  async function sendCircleTransaction(to: string, data: string, label: string) {
+    const session = getCircleWalletSession();
+    if (!session) throw new Error("Reconnect your Circle Wallet to authorize this transaction.");
+    const challenge = await circleAction({
+      action: "createContractExecution",
+      userToken: session.userToken,
+      walletId: session.walletId,
+      contractAddress: to,
+      callData: data,
+      refId: `LocalMate: ${label}`,
+    });
+    if (!challenge.challengeId) throw new Error("Circle did not create a transaction challenge.");
+    await executeCircleChallenge(session.sdk, challenge.challengeId);
+
+    const challengeRecord = await circleAction({
+      action: "getChallenge",
+      userToken: session.userToken,
+      challengeId: challenge.challengeId,
+    });
+    const transactionId = challengeRecord.challenge?.correlationIds?.[0];
+    if (!transactionId) throw new Error("Circle approved the action but did not return a transaction ID.");
+
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      const transactionData = await circleAction({
+        action: "getTransaction",
+        userToken: session.userToken,
+        transactionId,
+      });
+      const transaction = transactionData.transaction;
+      if (["FAILED", "DENIED", "CANCELLED"].includes(transaction?.state)) {
+        throw new Error(`Circle transaction ${String(transaction.state).toLowerCase()}.`);
+      }
+      if (transaction?.txHash) {
+        const hash = transaction.txHash as string;
+        setLiveTxs((items) => [...items, { label: `${label} · Circle`, hash }]);
+        await waitForPublicReceipt(hash);
+        return hash;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+    throw new Error("Circle accepted the transaction but its Arc hash is still pending.");
+  }
+
   async function sendLiveTransaction(to: string, data: string, label: string) {
+    if (walletKind === "circle") {
+      return sendCircleTransaction(to, data, label);
+    }
     const eth = injectedProvider();
     await ensureArcNetwork();
     const from = await activeAccount();
@@ -586,10 +657,8 @@ export default function Home() {
     setLiveError("");
     setBoardBusy(`Signing application for job #${job.id}...`);
     try {
-      const eth = injectedProvider();
       await ensureArcNetwork();
       const account = await activeAccount();
-      if (!eth) throw new Error("Wallet disconnected.");
       if (account.toLowerCase() === job.client.toLowerCase()) {
         throw new Error("The client wallet cannot apply to its own job. Switch to the helper wallet.");
       }
@@ -607,10 +676,30 @@ export default function Home() {
         functionName: "applicationDigest",
         data: rawDigest,
       });
-      const signature = await eth.request({
-        method: "personal_sign",
-        params: [digest, account],
-      }) as string;
+      let signature: string;
+      if (walletKind === "circle") {
+        const session = getCircleWalletSession();
+        if (!session) throw new Error("Reconnect your Circle Wallet to sign the application.");
+        const signChallenge = await circleAction({
+          action: "signMessage",
+          userToken: session.userToken,
+          walletId: session.walletId,
+          message: digest,
+          memo: `Apply to LocalMate job #${job.id}`,
+        });
+        const signResult = await executeCircleChallenge(session.sdk, signChallenge.challengeId);
+        signature = "data" in signResult && signResult.data && "signature" in signResult.data
+          ? signResult.data.signature
+          : "";
+        if (!signature) throw new Error("Circle did not return the application signature.");
+      } else {
+        const eth = injectedProvider();
+        if (!eth) throw new Error("Wallet disconnected.");
+        signature = await eth.request({
+          method: "personal_sign",
+          params: [digest, account],
+        }) as string;
+      }
       const application: LiveApplication = {
         jobId: job.id.toString(),
         provider: account,
@@ -638,17 +727,15 @@ export default function Home() {
     }
     setLiveError("");
     try {
-      const eth = injectedProvider();
       await ensureArcNetwork();
       const account = await activeAccount();
-      if (!eth) throw new Error("Wallet disconnected.");
 
       setLiveBusy("Creating job on Arc...");
       const nextJobData = encodeFunctionData({ abi: v3Abi, functionName: "nextJobId" });
-      const rawJobId = await eth.request({
-        method: "eth_call",
-        params: [{ to: deploymentV3.contractAddress, data: nextJobData }, "latest"],
-      }) as `0x${string}`;
+      const rawJobId = await arcPublicRpc(
+        "eth_call",
+        [{ to: deploymentV3.contractAddress, data: nextJobData }, "latest"],
+      ) as `0x${string}`;
       const jobId = decodeFunctionResult({ abi: v3Abi, functionName: "nextJobId", data: rawJobId });
       const createData = encodeFunctionData({
         abi: v3Abi,
@@ -986,7 +1073,7 @@ export default function Home() {
               <div>
                 <p className="kicker">LIVE JOB BOARD ON ARC</p>
                 <h2>Funded work, ready for applicants.</h2>
-                <p>Every listing below is read from LocalMateJobsV3. Apply with a contract-verifiable wallet signature, without paying gas.</p>
+                <p>Every listing below is read from LocalMateJobsV4. Apply with an EOA or Circle smart-wallet signature.</p>
               </div>
               <div>
                 <button className="wallet-button" onClick={() => setCircleModal(true)}>
@@ -1116,7 +1203,7 @@ export default function Home() {
               </div>
               <div className="job-review-action">
                 <p className="kicker">LIVE ARC TESTNET</p>
-                <h4>Create and fund a real V3 job.</h4>
+                <h4>Create and fund a real V4 job.</h4>
                 <ul>
                   <li><span>✓</span> AI safety check passed</li>
                   <li><span>✓</span> Applicants opt in themselves</li>
@@ -1347,8 +1434,8 @@ export default function Home() {
         <div className="wrap arc-tech-grid">
           <a className="scroll-reveal reveal-delay-1" href={`https://testnet.arcscan.app/address/${deploymentV3.contractAddress}`} target="_blank">
             <span className="tech-icon">⌁</span><i>LIVE</i>
-            <h3>Arc escrow V3</h3>
-            <p>Signed consent, evidence anchoring, disputes and programmable USDC settlement.</p>
+            <h3>Arc escrow V4</h3>
+            <p>Circle SCA support, signed consent, evidence anchoring, disputes and programmable USDC settlement.</p>
             <small>{deploymentV3.contractAddress.slice(0, 8)}…{deploymentV3.contractAddress.slice(-6)} ↗</small>
           </a>
           <a className="scroll-reveal reveal-delay-2" href="https://developers.circle.com/gateway/nanopayments" target="_blank">
@@ -1366,8 +1453,8 @@ export default function Home() {
           <a className="scroll-reveal reveal-delay-4" href="https://docs.arc.io/arc/tutorials/create-your-first-erc-8183-job" target="_blank">
             <span className="tech-icon">✓</span><i>COMPATIBLE</i>
             <h3>ERC-8183-style job</h3>
-            <p>LocalMate V3 implements a compatible job, escrow and settlement lifecycle.</p>
-            <small>LocalMate V3 · evidence + dispute extensions ↗</small>
+            <p>LocalMate V4 implements a compatible job, escrow and settlement lifecycle.</p>
+            <small>LocalMate V4 · Circle SCA + evidence + dispute extensions ↗</small>
           </a>
         </div>
         <div className="wrap activity-panel scroll-reveal">
@@ -1376,7 +1463,7 @@ export default function Home() {
             <a
               className="activity-row"
               key={item[0]}
-              href={index === 0 ? `https://testnet.arcscan.app/tx/${deploymentV3.transactions.payoutComplete}` : "https://testnet.arcscan.app"}
+              href={index === 0 ? `https://testnet.arcscan.app/tx/${deploymentV3.payoutTxHash}` : "https://testnet.arcscan.app"}
               target="_blank"
             >
               <b>{item[0]}</b><span className={item[1].toLowerCase()}>{item[1]}</span><strong>{item[2]}</strong><small>{item[3]}</small>
@@ -1385,7 +1472,7 @@ export default function Home() {
           <div className="deployment-proof">
             <span>LIVE DEMO CONTRACT</span>
             <code>{deploymentV3.contractAddress}</code>
-            <a href={`https://testnet.arcscan.app/address/${deploymentV3.contractAddress}`} target="_blank">Inspect V3 contract ↗</a>
+            <a href={`https://testnet.arcscan.app/address/${deploymentV3.contractAddress}`} target="_blank">Inspect V4 contract ↗</a>
           </div>
         </div>
       </section>

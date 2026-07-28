@@ -4,6 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { getCookie, setCookie } from "cookies-next/client";
 import type { W3SSdk } from "@circle-fin/w3s-pw-web-sdk";
 import { SocialLoginProvider } from "@circle-fin/w3s-pw-web-sdk/dist/src/types";
+import {
+  circleAction,
+  executeCircleChallenge,
+  setCircleWalletSession,
+} from "./circle-wallet-session";
 
 type CircleWallet = {
   id: string;
@@ -17,19 +22,6 @@ type Props = {
   onExternalWallet: () => void;
   onConnected: (wallet: CircleWallet, balance: string | null) => void;
 };
-
-async function circleAction(body: Record<string, unknown>) {
-  const response = await fetch("/api/circle", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || data.error || "Circle Wallet request failed.");
-  }
-  return data;
-}
 
 export default function CircleWalletModal({
   open,
@@ -67,6 +59,13 @@ export default function CircleWalletModal({
           item.token?.symbol?.startsWith("USDC") ||
           item.token?.name?.includes("USDC"),
       );
+      if (!sdk.current) throw new Error("Circle Wallet SDK is not ready.");
+      setCircleWalletSession({
+        sdk: sdk.current,
+        userToken,
+        walletId: wallet.id,
+        walletAddress: wallet.address,
+      });
       onConnected(wallet, usdc?.amount ?? null);
       onClose();
     }
@@ -78,14 +77,8 @@ export default function CircleWalletModal({
       try {
         const result = await circleAction({ action: "initializeUser", userToken });
         if (result.challengeId) {
-          sdk.current.execute(result.challengeId, async (challengeError) => {
-            if (challengeError) {
-              setError(challengeError.message || "Wallet creation was cancelled.");
-              setBusy("");
-              return;
-            }
-            await loadWallets(userToken);
-          });
+          await executeCircleChallenge(sdk.current, result.challengeId);
+          await loadWallets(userToken);
         } else {
           await loadWallets(userToken);
         }

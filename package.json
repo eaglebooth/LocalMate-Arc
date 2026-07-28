@@ -15,6 +15,7 @@
     "arc:deploy-demo": "node --env-file=.env.deploy scripts/deploy-and-demo.mjs",
     "arc:v2-test": "node --env-file=.env.deploy scripts/deploy-v2-and-test.mjs",
     "arc:v3-test": "node --env-file=.env.deploy scripts/deploy-v3-and-test.mjs",
+    "arc:v4-test": "node --env-file=.env.deploy scripts/deploy-v4-and-test.mjs",
     "arc:erc8183": "node --env-file=.env.deploy scripts/erc8183-official-demo.mjs",
     "arc:nanopayment": "node --env-file=.env.deploy scripts/nanopayments-demo.mjs"
   },
