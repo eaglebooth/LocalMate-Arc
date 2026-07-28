@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { list, put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -19,6 +20,35 @@ const ALLOWED_TYPES = new Set([
 
 function jsonError(error: string, status: number) {
   return NextResponse.json({ error }, { status });
+}
+
+export async function GET(request: Request) {
+  try {
+    const jobId = new URL(request.url).searchParams.get("jobId");
+    if (!jobId || !/^\d+$/.test(jobId)) {
+      return jsonError("The Arc job ID is invalid.", 400);
+    }
+    const result = await list({ prefix: `job-${jobId}/`, limit: 100 });
+    const blob = result.blobs.sort(
+      (left, right) => right.uploadedAt.getTime() - left.uploadedAt.getTime(),
+    )[0];
+    if (!blob) return jsonError("No shared evidence has been uploaded for this job.", 404);
+    const filename = blob.pathname.split("/").pop() ?? "evidence";
+    const match = filename.match(/^([a-fA-F0-9]{64})-(.+)$/);
+    if (!match) return jsonError("Stored evidence metadata is invalid.", 500);
+
+    return NextResponse.json({
+      key: blob.pathname,
+      uri: blob.url,
+      evidenceHash: `0x${match[1].toLowerCase()}`,
+      name: match[2],
+      size: blob.size,
+      type: blob.contentType,
+    });
+  } catch (error) {
+    console.error("Evidence lookup failed", error);
+    return jsonError("Shared evidence storage is unavailable.", 503);
+  }
 }
 
 export async function POST(request: Request) {
@@ -46,12 +76,17 @@ export async function POST(request: Request) {
 
     const bytes = Buffer.from(await file.arrayBuffer());
     const evidenceHash = `0x${createHash("sha256").update(bytes).digest("hex")}`;
-    const uri = `data:${file.type};base64,${bytes.toString("base64")}`;
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+    const pathname = `job-${jobId}/${evidenceHash.slice(2)}-${safeName}`;
+    const blob = await put(pathname, bytes, {
+      access: "public",
+      addRandomSuffix: true,
+      contentType: file.type,
+    });
 
     return NextResponse.json({
-      key: `job-${jobId}/${Date.now()}-${safeName}`,
-      uri,
+      key: blob.pathname,
+      uri: blob.url,
       evidenceHash,
       name: file.name,
       size: file.size,

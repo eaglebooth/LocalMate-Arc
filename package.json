@@ -24,6 +24,7 @@
     "@circle-fin/x402-batching": "^3.2.0",
     "@reown/appkit": "^1.8.23",
     "@reown/appkit-adapter-ethers": "^1.8.23",
+    "@vercel/blob": "^2.6.1",
     "@x402/core": "^2.19.0",
     "@x402/evm": "^2.19.0",
     "@x402/svm": "^2.20.0",

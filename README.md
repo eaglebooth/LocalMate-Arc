@@ -91,7 +91,8 @@ Never commit test or production private keys.
 
 - `app/page.tsx`: Resident and Helper product flows
 - `contracts/LocalMateJobsV4.sol`: Circle SCA-compatible escrow and settlement contract
-- `worker/index.ts`: evidence upload and retrieval
+- `app/api/evidence/route.ts`: Vercel Blob evidence upload and retrieval
+- `worker/index.ts`: optional Cloudflare R2 evidence backend
 - `scripts/deploy-v4-and-test.mjs`: Arc deployment and end-to-end contract test
 - `ARCHITECTURE.md`: current architecture and planned Agentic Economy modules
 - `ARC_INTEGRATION.md`: Arc configuration and integration notes
@@ -105,6 +106,7 @@ Live:
 - V4 job lifecycle
 - wallet-signed applications
 - evidence anchoring
+- shared Vercel Blob evidence previews verified against the Arc SHA-256 hash
 - payout, refund and dispute settlement
 - Circle User-Controlled Wallet onboarding with Google
 - Circle Arc Testnet wallet creation/recovery, address and USDC balance

@@ -12,8 +12,10 @@ flowchart LR
   SCA --> V4[LocalMateJobsV4]
   RPC --> V4
   V4 --> U[Arc USDC escrow]
-  H --> E[Evidence upload]
-  E --> HASH[SHA-256 + URI hash]
+  H --> B[Vercel Blob shared evidence]
+  B --> E[Resident evidence preview]
+  H --> E2[Evidence upload]
+  E2 --> HASH[SHA-256 + URI hash]
   HASH --> V4
 ```
 
@@ -24,6 +26,9 @@ dispute settlement. It verifies both EOA signatures and Circle SCA signatures
 through ERC-1271. Circle's Web SDK provides Google social login, user-controlled
 wallet creation/recovery and user-approved contract execution. Private task
 details and evidence bytes stay off-chain; their hashes are anchored on-chain.
+Evidence files are shared through public, hard-to-guess Vercel Blob URLs with
+random suffixes. The app downloads each file and verifies its SHA-256 digest
+against the value recorded by LocalMateJobsV4 before showing it to the Resident.
 
 ## Planned extensions
 

@@ -240,6 +240,14 @@ function suggestedBudgetFor(category: string) {
   return "10";
 }
 
+async function sha256Hex(bytes: ArrayBuffer) {
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return `0x${Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("")}`;
+}
+
 export default function Home() {
   const [task, setTask] = useState(
     "Walk my golden retriever tomorrow from 6-7 PM. Budget up to 8 USDC.",
@@ -377,13 +385,42 @@ export default function Home() {
       try {
         const job = await readLiveJob(liveJobId);
         if (cancelled) return;
+        let record: EvidenceRecord | null = null;
         try {
           const storedEvidence = window.localStorage.getItem(`${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`);
-          setEvidenceRecord(storedEvidence ? JSON.parse(storedEvidence) as EvidenceRecord : null);
+          const cached = storedEvidence ? JSON.parse(storedEvidence) as EvidenceRecord : null;
+          if (cached && cached.evidenceHash.toLowerCase() === job.evidenceHash?.toLowerCase()) {
+            record = cached;
+          }
         } catch {
           window.localStorage.removeItem(`${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`);
-          setEvidenceRecord(null);
         }
+        if (!record && job.status >= 3 && job.evidenceHash) {
+          const evidenceResponse = await fetch(`/api/evidence?jobId=${liveJobId}`);
+          if (evidenceResponse.ok) {
+            const candidate = await evidenceResponse.json() as EvidenceRecord;
+            const blobResponse = await fetch(candidate.uri);
+            if (blobResponse.ok) {
+              const downloadedHash = await sha256Hex(await blobResponse.arrayBuffer());
+              if (
+                downloadedHash.toLowerCase() === job.evidenceHash.toLowerCase()
+                && candidate.evidenceHash.toLowerCase() === job.evidenceHash.toLowerCase()
+              ) {
+                record = candidate;
+                try {
+                  window.localStorage.setItem(
+                    `${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`,
+                    JSON.stringify(candidate),
+                  );
+                } catch {
+                  // Shared Blob storage remains the source if browser storage is full.
+                }
+              }
+            }
+          }
+        }
+        if (cancelled) return;
+        setEvidenceRecord(record);
         setLiveClient(job.client);
         setLiveProvider(job.provider === "0x0000000000000000000000000000000000000000" ? "" : job.provider);
         setLiveEvaluator(job.evaluator);
@@ -1097,32 +1134,27 @@ export default function Home() {
     }
   }
 
-  async function verifyEvidenceForReview(file: File | null) {
+  async function publishExistingEvidence(file: File | null) {
     if (!file || liveJobId === null) return;
     setLiveError("");
-    setLiveBusy("Verifying evidence against Arc...");
+    setLiveBusy("Publishing verified evidence to Vercel Blob...");
     try {
       if (file.size > 1024 * 1024) throw new Error("Evidence must be 1 MB or smaller.");
-      const bytes = await file.arrayBuffer();
-      const digest = await window.crypto.subtle.digest("SHA-256", bytes);
-      const evidenceHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-      const job = await readLiveJob(liveJobId);
+      const { account, job } = await requireLiveRole("provider");
+      const evidenceHash = await sha256Hex(await file.arrayBuffer());
       if (!job.evidenceHash || evidenceHash.toLowerCase() !== job.evidenceHash.toLowerCase()) {
         throw new Error("This file does not match the evidence hash anchored on Arc.");
       }
-      const uri = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error("Could not read this evidence file."));
-        reader.readAsDataURL(file);
-      });
-      const record: EvidenceRecord = {
-        uri,
-        evidenceHash,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      };
+      const body = new FormData();
+      body.append("file", file);
+      body.append("jobId", liveJobId.toString());
+      body.append("provider", account);
+      const response = await fetch("/api/evidence", { method: "POST", body });
+      const record = await response.json() as EvidenceRecord & { error?: string };
+      if (!response.ok) throw new Error(record.error || "Shared evidence upload failed.");
+      if (record.evidenceHash.toLowerCase() !== job.evidenceHash.toLowerCase()) {
+        throw new Error("Vercel Blob returned evidence that does not match Arc.");
+      }
       setEvidenceRecord(record);
       try {
         window.localStorage.setItem(
@@ -1132,9 +1164,9 @@ export default function Home() {
       } catch {
         // The verified preview remains available for this page session.
       }
-      setNotice("Evidence verified: the file matches the SHA-256 hash anchored on Arc.");
+      setNotice("Evidence verified against Arc and published to shared Vercel Blob storage.");
     } catch (error) {
-      setLiveError(error instanceof Error ? error.message : "Evidence verification failed.");
+      setLiveError(error instanceof Error ? error.message : "Evidence publishing failed.");
     } finally {
       setLiveBusy("");
     }
@@ -1635,6 +1667,18 @@ export default function Home() {
                     >
                       {isAssignedProvider ? "Upload + anchor on Arc" : "Connect assigned Helper wallet"}
                     </button>
+                    {!evidenceRecord && liveStage === "submitted" && isAssignedProvider && (
+                      <label className="evidence-upload review-evidence-upload">
+                        <input
+                          type="file"
+                          accept="image/*,video/*,application/pdf"
+                          onChange={(event) => void publishExistingEvidence(event.target.files?.[0] ?? null)}
+                          disabled={Boolean(liveBusy)}
+                        />
+                        <b>Publish previous evidence to shared storage</b>
+                        <small>One-time migration for this existing job. The file must match its Arc hash.</small>
+                      </label>
+                    )}
                   </div>
                   <div className={["completed", "rejected", "disputed"].includes(liveStage) ? "done" : liveStage === "submitted" ? "active" : ""}>
                     <span>2</span><b>Resident reviews</b>
@@ -1655,17 +1699,12 @@ export default function Home() {
                         <strong>View full evidence ↗</strong>
                       </a>
                     )}
-                    {!evidenceRecord && liveStage === "submitted" && isJobEvaluator && (
-                      <label className="evidence-upload review-evidence-upload">
-                        <input
-                          type="file"
-                          accept="image/*,video/*,application/pdf"
-                          onChange={(event) => void verifyEvidenceForReview(event.target.files?.[0] ?? null)}
-                          disabled={Boolean(liveBusy)}
-                        />
-                        <b>Load submitted evidence for review</b>
-                        <small>Select the Helper&apos;s file. LocalMate verifies it against {onchainEvidenceHash.slice(0, 10)}... on Arc.</small>
-                      </label>
+                    {!evidenceRecord && liveStage === "submitted" && (
+                      <p className="evidence-waiting">
+                        {isJobEvaluator
+                          ? `Waiting for shared evidence matching ${onchainEvidenceHash.slice(0, 10)}...`
+                          : "Shared evidence is being prepared for Resident review."}
+                      </p>
                     )}
                     <div className="evidence-actions">
                       <button
