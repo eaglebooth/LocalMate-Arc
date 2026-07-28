@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parseUnits, toBytes } from "viem";
 import deploymentV4 from "../public/arc-v4-deployment.json";
 import CircleWalletModal from "./CircleWalletModal";
@@ -45,6 +46,7 @@ type LiveJobRecord = {
   expiresAt: bigint;
   status: number;
   requirementsHash: string;
+  evidenceHash?: string;
   task?: string;
 };
 
@@ -86,6 +88,7 @@ const usdcAbi = [
 const LIVE_SESSION_KEY = "localmate-live-session-v3";
 const LIVE_JOBS_KEY = "localmate-live-job-metadata-v3";
 const LIVE_APPLICATIONS_KEY = "localmate-live-applications-v3";
+const LIVE_EVIDENCE_KEY_PREFIX = "localmate-live-evidence-v4:";
 
 const services = [
   { icon: "🐕", name: "Pet care", sub: "Walks, visits & sitting", color: "mint" },
@@ -269,6 +272,7 @@ export default function Home() {
   const [circleBalance, setCircleBalance] = useState<string | null>(null);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceRecord, setEvidenceRecord] = useState<EvidenceRecord | null>(null);
+  const [onchainEvidenceHash, setOnchainEvidenceHash] = useState("");
   const [storageHydrated, setStorageHydrated] = useState(false);
   const externalProviderRef = useRef<Eip1193Provider | null>(null);
 
@@ -373,9 +377,17 @@ export default function Home() {
       try {
         const job = await readLiveJob(liveJobId);
         if (cancelled) return;
+        try {
+          const storedEvidence = window.localStorage.getItem(`${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`);
+          setEvidenceRecord(storedEvidence ? JSON.parse(storedEvidence) as EvidenceRecord : null);
+        } catch {
+          window.localStorage.removeItem(`${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`);
+          setEvidenceRecord(null);
+        }
         setLiveClient(job.client);
         setLiveProvider(job.provider === "0x0000000000000000000000000000000000000000" ? "" : job.provider);
         setLiveEvaluator(job.evaluator);
+        setOnchainEvidenceHash(job.evidenceHash ?? "");
         const onchainStages: Partial<Record<number, LiveStage>> = {
           1: "funded",
           2: "assigned",
@@ -530,6 +542,7 @@ export default function Home() {
       expiresAt: decoded[4],
       status: decoded[6],
       requirementsHash: decoded[7],
+      evidenceHash: decoded[9],
     };
   }
 
@@ -1067,9 +1080,61 @@ export default function Home() {
       });
       await sendLiveTransaction(deploymentV4.contractAddress, data, "Anchor evidence");
       setEvidenceRecord(record);
+      try {
+        window.localStorage.setItem(
+          `${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`,
+          JSON.stringify(record),
+        );
+      } catch {
+        setNotice("Evidence was anchored on Arc, but this browser could not cache the preview.");
+      }
+      setOnchainEvidenceHash(record.evidenceHash);
       setLiveStage("submitted");
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : "Submission failed. Switch to the assigned provider wallet.");
+    } finally {
+      setLiveBusy("");
+    }
+  }
+
+  async function verifyEvidenceForReview(file: File | null) {
+    if (!file || liveJobId === null) return;
+    setLiveError("");
+    setLiveBusy("Verifying evidence against Arc...");
+    try {
+      if (file.size > 1024 * 1024) throw new Error("Evidence must be 1 MB or smaller.");
+      const bytes = await file.arrayBuffer();
+      const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+      const evidenceHash = `0x${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+      const job = await readLiveJob(liveJobId);
+      if (!job.evidenceHash || evidenceHash.toLowerCase() !== job.evidenceHash.toLowerCase()) {
+        throw new Error("This file does not match the evidence hash anchored on Arc.");
+      }
+      const uri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read this evidence file."));
+        reader.readAsDataURL(file);
+      });
+      const record: EvidenceRecord = {
+        uri,
+        evidenceHash,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      };
+      setEvidenceRecord(record);
+      try {
+        window.localStorage.setItem(
+          `${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`,
+          JSON.stringify(record),
+        );
+      } catch {
+        // The verified preview remains available for this page session.
+      }
+      setNotice("Evidence verified: the file matches the SHA-256 hash anchored on Arc.");
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Evidence verification failed.");
     } finally {
       setLiveBusy("");
     }
@@ -1576,9 +1641,31 @@ export default function Home() {
                     <small>The client can approve, reject with a refund, or ask for human review.</small>
                     {evidenceRecord && (
                       <a className="evidence-record" href={evidenceRecord.uri} target="_blank" rel="noreferrer">
+                        {evidenceRecord.type.startsWith("image/") && (
+                          <Image
+                            src={evidenceRecord.uri}
+                            alt={`Submitted evidence: ${evidenceRecord.name}`}
+                            width={640}
+                            height={360}
+                            unoptimized
+                          />
+                        )}
                         <b>{evidenceRecord.name}</b>
                         <small>{evidenceRecord.evidenceHash.slice(0, 14)}...{evidenceRecord.evidenceHash.slice(-8)}</small>
+                        <strong>View full evidence ↗</strong>
                       </a>
+                    )}
+                    {!evidenceRecord && liveStage === "submitted" && isJobEvaluator && (
+                      <label className="evidence-upload review-evidence-upload">
+                        <input
+                          type="file"
+                          accept="image/*,video/*,application/pdf"
+                          onChange={(event) => void verifyEvidenceForReview(event.target.files?.[0] ?? null)}
+                          disabled={Boolean(liveBusy)}
+                        />
+                        <b>Load submitted evidence for review</b>
+                        <small>Select the Helper&apos;s file. LocalMate verifies it against {onchainEvidenceHash.slice(0, 10)}... on Arc.</small>
+                      </label>
                     )}
                     <div className="evidence-actions">
                       <button
