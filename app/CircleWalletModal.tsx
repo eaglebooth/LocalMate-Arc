@@ -16,6 +16,13 @@ type CircleWallet = {
   blockchain: string;
 };
 
+type StoredCircleAuth = {
+  userToken: string;
+  encryptionKey: string;
+};
+
+const CIRCLE_AUTH_KEY = "localmate-circle-auth";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -39,12 +46,19 @@ export default function CircleWalletModal({
     const appId = process.env.NEXT_PUBLIC_CIRCLE_APP_ID ?? "";
     const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
-    async function loadWallets(userToken: string) {
+    async function loadWallets(userToken: string, retries = 0): Promise<void> {
       const walletData = await circleAction({ action: "listWallets", userToken });
       const wallet = (walletData.wallets as CircleWallet[] | undefined)?.find(
         (item) => item.blockchain === "ARC-TESTNET",
       );
-      if (!wallet) throw new Error("No Arc Testnet Circle wallet was found.");
+      if (!wallet) {
+        if (retries > 0) {
+          setBusy("Finalizing your Arc wallet...");
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+          return loadWallets(userToken, retries - 1);
+        }
+        throw new Error("Circle login succeeded, but the Arc Testnet wallet is not ready yet. Please retry.");
+      }
       const balanceData = await circleAction({
         action: "getTokenBalance",
         userToken,
@@ -66,6 +80,8 @@ export default function CircleWalletModal({
         walletId: wallet.id,
         walletAddress: wallet.address,
       });
+      window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
+      window.sessionStorage.removeItem("localmate-circle-login-pending");
       onConnected(wallet, usdc?.amount ?? null);
       onClose();
     }
@@ -77,18 +93,19 @@ export default function CircleWalletModal({
       try {
         const result = await circleAction({ action: "initializeUser", userToken });
         if (result.challengeId) {
+          setBusy("Approve wallet creation in Circle...");
           await executeCircleChallenge(sdk.current, result.challengeId);
-          await loadWallets(userToken);
+          setBusy("Finalizing your Arc wallet...");
+          await loadWallets(userToken, 5);
         } else {
-          await loadWallets(userToken);
+          await loadWallets(userToken, 2);
         }
       } catch (requestError) {
         const message =
           requestError instanceof Error ? requestError.message : "Wallet initialization failed.";
         if (message.includes("155106") || message.toLowerCase().includes("already initialized")) {
-          await loadWallets(userToken);
+          await loadWallets(userToken, 3);
         } else {
-          window.sessionStorage.removeItem("localmate-circle-login-pending");
           setError(message);
           setBusy("");
         }
@@ -117,16 +134,37 @@ export default function CircleWalletModal({
         (loginError, result) => {
           if (cancelled) return;
           if (loginError || !result) {
-            window.sessionStorage.removeItem("localmate-circle-login-pending");
             setError(loginError?.message || "Google login did not complete.");
             setBusy("");
             return;
           }
+          window.sessionStorage.setItem(
+            CIRCLE_AUTH_KEY,
+            JSON.stringify({
+              userToken: result.userToken,
+              encryptionKey: result.encryptionKey,
+            } satisfies StoredCircleAuth),
+          );
           void initialize(result.userToken, result.encryptionKey);
         },
       );
       sdk.current = instance;
       setReady(true);
+
+      const savedAuth = window.sessionStorage.getItem(CIRCLE_AUTH_KEY);
+      if (
+        savedAuth &&
+        window.sessionStorage.getItem("localmate-circle-login-pending") === "true"
+      ) {
+        try {
+          const parsed = JSON.parse(savedAuth) as StoredCircleAuth;
+          if (parsed.userToken && parsed.encryptionKey) {
+            void initialize(parsed.userToken, parsed.encryptionKey);
+          }
+        } catch {
+          window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
+        }
+      }
     }
 
     void setup();
@@ -159,7 +197,6 @@ export default function CircleWalletModal({
       });
       await sdk.current.performLogin(SocialLoginProvider.GOOGLE);
     } catch (loginError) {
-      window.sessionStorage.removeItem("localmate-circle-login-pending");
       setError(loginError instanceof Error ? loginError.message : "Google login failed.");
       setBusy("");
     }
