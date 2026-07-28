@@ -5,6 +5,7 @@ import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parse
 import deploymentV3 from "../public/arc-v3-deployment.json";
 import CircleWalletModal from "./CircleWalletModal";
 import ExternalWalletModal, { type Eip1193Provider } from "./ExternalWalletModal";
+import { reownAppKit } from "./reown-appkit";
 import {
   circleAction,
   clearCircleWalletSession,
@@ -286,6 +287,22 @@ export default function Home() {
     elements.forEach((element) => observer.observe(element));
     return () => observer.disconnect();
   }, [showMatches, task]);
+
+  useEffect(() => {
+    const appKit = reownAppKit;
+    if (!appKit) return;
+    return appKit.subscribeProviders((providers) => {
+      const provider = providers.eip155 as Eip1193Provider | undefined;
+      const account = appKit.getAccount("eip155");
+      if (!provider || !account || !account.isConnected || !account.address) return;
+      externalProviderRef.current = provider;
+      setWallet(account.address);
+      setWalletKind("external");
+      setCircleBalance(null);
+      setExternalWalletModal(false);
+      setNotice("WalletConnect wallet connected on Arc Testnet.");
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1019,7 +1036,13 @@ export default function Home() {
       <CircleWalletModal
         open={circleModal}
         onClose={() => setCircleModal(false)}
-        onExternalWallet={() => setExternalWalletModal(true)}
+        onExternalWallet={() => {
+          if (reownAppKit) {
+            void reownAppKit.open({ view: "Connect" });
+          } else {
+            setExternalWalletModal(true);
+          }
+        }}
         onConnected={connectCircleWallet}
       />
       <ExternalWalletModal
