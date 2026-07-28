@@ -482,6 +482,7 @@ export default function Home() {
 
   const connectCircleWallet = useCallback(
     (connectedWallet: { id: string; address: string; blockchain: string }, balance: string | null) => {
+      window.sessionStorage.removeItem("localmate-circle-login-pending");
       setWallet(connectedWallet.address);
       setWalletKind("circle");
       setCircleBalance(balance);
@@ -489,6 +490,28 @@ export default function Home() {
     },
     [],
   );
+
+  const closeCircleModal = useCallback(() => {
+    setCircleModal(false);
+  }, []);
+
+  const openExternalWallet = useCallback(() => {
+    if (reownAppKit) {
+      void reownAppKit.open({ view: "Connect" });
+    } else {
+      setExternalWalletModal(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem("localmate-circle-login-pending") === "true") {
+      const timer = window.setTimeout(() => {
+        setCircleModal(true);
+        setNotice("Finishing your Circle Wallet sign-in...");
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, []);
 
   async function ensureArcNetwork() {
     if (walletKind === "circle") return;
@@ -1035,14 +1058,8 @@ export default function Home() {
 
       <CircleWalletModal
         open={circleModal}
-        onClose={() => setCircleModal(false)}
-        onExternalWallet={() => {
-          if (reownAppKit) {
-            void reownAppKit.open({ view: "Connect" });
-          } else {
-            setExternalWalletModal(true);
-          }
-        }}
+        onClose={closeCircleModal}
+        onExternalWallet={openExternalWallet}
         onConnected={connectCircleWallet}
       />
       <ExternalWalletModal

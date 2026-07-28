@@ -356,7 +356,9 @@ footer { padding: 34px 0; background: #09231d; color: white; }
 .circle-external i { position: absolute; right: 16px; font-style: normal; font-size: 20px; font-weight: 400; }
 .circle-google { background: #111827; }
 .circle-google:disabled { cursor: wait; opacity: .62; }
-.circle-external span, .circle-google span { display: inline-grid; width: 22px; height: 22px; margin-right: 7px; place-items: center; border-radius: 50%; background: white; color: #246edb; }
+.circle-external .connect-icon, .circle-google .connect-icon { display: inline-grid; width: 26px; height: 26px; margin-right: 9px; place-items: center; border-radius: 7px; background: #fff; vertical-align: middle; }
+.connect-icon svg { width: 19px; height: 19px; }
+.wallet-logo svg { fill: none; stroke: #246edb; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .circle-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: rgba(255,255,255,.38); font-size: 8px; font-weight: 800; }
 .circle-divider::before, .circle-divider::after { content: ""; height: 1px; flex: 1; background: rgba(255,255,255,.14); }
 .circle-email-coming { padding: 13px 14px; border: 1px dashed rgba(255,255,255,.2); border-radius: 10px; }

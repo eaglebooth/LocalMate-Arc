@@ -88,6 +88,7 @@ export default function CircleWalletModal({
         if (message.includes("155106") || message.toLowerCase().includes("already initialized")) {
           await loadWallets(userToken);
         } else {
+          window.sessionStorage.removeItem("localmate-circle-login-pending");
           setError(message);
           setBusy("");
         }
@@ -116,6 +117,7 @@ export default function CircleWalletModal({
         (loginError, result) => {
           if (cancelled) return;
           if (loginError || !result) {
+            window.sessionStorage.removeItem("localmate-circle-login-pending");
             setError(loginError?.message || "Google login did not complete.");
             setBusy("");
             return;
@@ -138,6 +140,7 @@ export default function CircleWalletModal({
     setError("");
     setBusy("Opening Google...");
     try {
+      window.sessionStorage.setItem("localmate-circle-login-pending", "true");
       const deviceId = await sdk.current.getDeviceId();
       const token = await circleAction({ action: "createDeviceToken", deviceId });
       setCookie("circle.deviceToken", token.deviceToken, { maxAge: 900 });
@@ -156,6 +159,7 @@ export default function CircleWalletModal({
       });
       await sdk.current.performLogin(SocialLoginProvider.GOOGLE);
     } catch (loginError) {
+      window.sessionStorage.removeItem("localmate-circle-login-pending");
       setError(loginError instanceof Error ? loginError.message : "Google login failed.");
       setBusy("");
     }
@@ -183,10 +187,25 @@ export default function CircleWalletModal({
           <p>Sign in with Google to create or recover your user-owned Circle Wallet on Arc Testnet.</p>
         </div>
         <button className="circle-external" onClick={() => { onExternalWallet(); onClose(); }}>
-          <span>▣</span> Choose a crypto wallet <i>›</i>
+          <span className="connect-icon wallet-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 6.8h13.2c1 0 1.8.8 1.8 1.8v8.6c0 1-.8 1.8-1.8 1.8H5a3 3 0 0 1-3-3V7.3c0-1.4.9-2.7 2.3-3.1l10-2.9c.9-.3 1.9.3 2.1 1.2l.3 1.3H5a3 3 0 0 0-3 3" />
+              <path d="M15.8 11.2H22v4.4h-6.2a2.2 2.2 0 1 1 0-4.4Z" />
+              <circle cx="16.2" cy="13.4" r=".7" />
+            </svg>
+          </span>
+          Choose a crypto wallet <i>›</i>
         </button>
         <button className="circle-google" onClick={continueWithGoogle} disabled={!ready || Boolean(busy)}>
-          <span>G</span> {busy || "Continue with Google"}
+          <span className="connect-icon google-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-1.99 3.02v2.54h3.23c1.89-1.74 2.98-4.3 2.98-7.41Z" />
+              <path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.36l-3.23-2.54c-.9.6-2.04.96-3.39.96-2.6 0-4.8-1.76-5.59-4.12H3.08v2.62A10 10 0 0 0 12 22Z" />
+              <path fill="#FBBC05" d="M6.41 13.94A6 6 0 0 1 6.1 12c0-.67.12-1.32.31-1.94V7.44H3.08A10 10 0 0 0 2 12c0 1.61.39 3.14 1.08 4.56l3.33-2.62Z" />
+              <path fill="#EA4335" d="M12 5.94c1.47 0 2.78.5 3.82 1.49l2.87-2.87A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.92 5.44l3.33 2.62C7.2 7.7 9.4 5.94 12 5.94Z" />
+            </svg>
+          </span>
+          {busy || "Continue with Google"}
         </button>
         <div className="circle-divider"><span>OR</span></div>
         <div className="circle-email-coming">
