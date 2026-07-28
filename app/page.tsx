@@ -950,7 +950,18 @@ export default function Home() {
       body.append("jobId", liveJobId.toString());
       body.append("provider", provider);
       const response = await fetch("/api/evidence", { method: "POST", body });
-      const record = await response.json() as EvidenceRecord & { error?: string };
+      const responseText = await response.text();
+      let record: EvidenceRecord & { error?: string };
+      try {
+        record = JSON.parse(responseText) as EvidenceRecord & { error?: string };
+      } catch {
+        const serverMessage = responseText.trim().slice(0, 180);
+        throw new Error(
+          serverMessage
+            ? `Evidence service error: ${serverMessage}`
+            : `Evidence upload failed (${response.status}).`,
+        );
+      }
       if (!response.ok) throw new Error(record.error || "Evidence upload failed.");
       setLiveBusy("Anchoring evidence hash on Arc...");
       const data = encodeFunctionData({
@@ -1440,13 +1451,21 @@ export default function Home() {
                         type="file"
                         accept="image/*,video/*,application/pdf"
                         onChange={(event) => {
-                          setEvidenceFile(event.target.files?.[0] ?? null);
+                          const nextFile = event.target.files?.[0] ?? null;
+                          if (nextFile && nextFile.size > 1024 * 1024) {
+                            setEvidenceFile(null);
+                            setLiveError("Evidence must be 1 MB or smaller for this Vercel demo.");
+                            event.target.value = "";
+                            return;
+                          }
+                          setLiveError("");
+                          setEvidenceFile(nextFile);
                           setEvidenceRecord(null);
                         }}
                         disabled={liveStage !== "assigned"}
                       />
                       <b>{evidenceFile?.name ?? "Choose evidence file"}</b>
-                      <small>{evidenceFile ? `${(evidenceFile.size / 1024 / 1024).toFixed(2)} MB` : "Maximum 10 MB"}</small>
+                      <small>{evidenceFile ? `${(evidenceFile.size / 1024 / 1024).toFixed(2)} MB` : "Maximum 1 MB"}</small>
                     </label>
                     <button onClick={submitLiveWork} disabled={liveStage !== "assigned" || !evidenceFile || Boolean(liveBusy)}>Upload + anchor on Arc</button>
                   </div>
