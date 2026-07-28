@@ -266,6 +266,7 @@ export default function Home() {
   const [circleBalance, setCircleBalance] = useState<string | null>(null);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceRecord, setEvidenceRecord] = useState<EvidenceRecord | null>(null);
+  const [storageHydrated, setStorageHydrated] = useState(false);
   const externalProviderRef = useRef<Eip1193Provider | null>(null);
 
   useEffect(() => {
@@ -334,23 +335,27 @@ export default function Home() {
         setLiveApplications(storedApplications);
       } catch {
         window.localStorage.removeItem(LIVE_SESSION_KEY);
+      } finally {
+        setStorageHydrated(true);
       }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
+    if (!storageHydrated) return;
     window.localStorage.setItem(LIVE_SESSION_KEY, JSON.stringify({
       jobId: liveJobId?.toString() ?? null,
       stage: liveStage,
       budget: budgetUsdc,
       provider: liveProvider,
     }));
-  }, [budgetUsdc, liveJobId, liveProvider, liveStage]);
+  }, [budgetUsdc, liveJobId, liveProvider, liveStage, storageHydrated]);
 
   useEffect(() => {
+    if (!storageHydrated) return;
     window.localStorage.setItem(LIVE_APPLICATIONS_KEY, JSON.stringify(liveApplications));
-  }, [liveApplications]);
+  }, [liveApplications, storageHydrated]);
 
   const taskCategory = useMemo(() => detectCategory(task), [task]);
   const budgetUnits = useMemo(() => {
