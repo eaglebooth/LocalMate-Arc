@@ -13,13 +13,21 @@
   "version": "V4",
   "supportsCircleSCA": true,
   "latestLiveRound": {
-    "jobId": "2",
-    "budgetUsdc": "0.01",
-    "resident": "0xeb57bc7125fa60d7482CE12058397369AB3581f8",
-    "helper": "0x2da5393d7BBb9A037dc3abB56DbbC5C150fc843f",
-    "evidenceHash": "0x4ff7142489eaa7336becd371583a1792d7a9c2fa869775d3ce8eb58e49e201cf",
-    "createTxHash": "0x6d38ff1adb061193b76b26bd92efad0d315bf4e9c224e4ecd36033e02fd0c44d",
-    "payoutTxHash": "0x7a84c243e9b8ee0627f768f7bc9602d17efd98fd7816d886aaa02ab66c4dde2f",
-    "completedAt": "2026-07-28T03:24:54.309Z"
+    "jobId": "3",
+    "budgetUsdc": "7",
+    "providerPaymentUsdc": "6.825",
+    "feeUsdc": "0.175",
+    "resident": "0x2606FAcbd49ACB6166A32C7fCc03F4949702146f",
+    "helper": "0xd10BD455Bc1b8C0E4bdDC0dC750C059325014d45",
+    "applicationHash": "0xb757670790f378ce99f284506afd6e0831de43d31999df6462ef268b31b3d8d6",
+    "evidenceHash": "0x9bc82e1c6173fd29df3bc0a1c52a8d1986e91d8cbc54a01782d2f3f087b23254",
+    "evidenceUriHash": "0x0ab64ce8b2ede5038f6290ac631f1d27c5f6c1100038681b18c50f378863122b",
+    "evidenceBlobUrl": "https://ihat7putukk9e93w.public.blob.vercel-storage.com/job-3/9bc82e1c6173fd29df3bc0a1c52a8d1986e91d8cbc54a01782d2f3f087b23254-3096293489218616-KA2ErO5P89lRGcGTJb6nKatw5CVElJ.jfif",
+    "createTxHash": "0xe903e57a909f6b9687c03a95791be9c371889cbed8e2b0f6fc33b7ef0a52a281",
+    "fundTxHash": "0x76a53e7997f8b90af3a68a82e8b07e1a2e1205d3efd88293d697eeafdfd6e805",
+    "assignTxHash": "0xd4a894a2f0c529d7c2d22d729c18ea50d76baf507afd42747d20cde7cb686689",
+    "evidenceTxHash": "0x078c406d6337595aeb32f2a1d490b307d23150ae05f72b3c0f0cb5d390f6f13a",
+    "payoutTxHash": "0x10987ac546be7c3890628ad9d35b9403dea3d2c21e272ec9fd71f0450b9f39a0",
+    "completedAt": "2026-07-28T05:56:47.000Z"
   }
 }

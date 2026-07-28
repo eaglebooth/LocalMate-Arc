@@ -182,9 +182,34 @@ const helpers: Helper[] = [
 ];
 
 const activity = [
-  ["V4 verified payout", "Completed", "+0.00975 USDC", "verified onchain"],
-  ["Shelf assembly · Tower A", "Funded", "18.00 USDC", "4 min ago"],
-  ["Home cleaning · Tower C", "Submitted", "14.00 USDC", "11 min ago"],
+  {
+    label: "Job #3 payout to Circle Helper",
+    status: "Completed",
+    amount: "+6.825 USDC",
+    detail: "Resident-approved onchain",
+    tx: deploymentV4.latestLiveRound.payoutTxHash,
+  },
+  {
+    label: "Job #3 evidence hash anchored",
+    status: "Submitted",
+    amount: "SHA-256",
+    detail: `${deploymentV4.latestLiveRound.evidenceHash.slice(0, 10)}...${deploymentV4.latestLiveRound.evidenceHash.slice(-6)}`,
+    tx: deploymentV4.latestLiveRound.evidenceTxHash,
+  },
+  {
+    label: "Job #3 Circle Helper assigned",
+    status: "Assigned",
+    amount: "ERC-1271",
+    detail: `${deploymentV4.latestLiveRound.helper.slice(0, 8)}...${deploymentV4.latestLiveRound.helper.slice(-6)}`,
+    tx: deploymentV4.latestLiveRound.assignTxHash,
+  },
+  {
+    label: "Job #3 escrow funded",
+    status: "Funded",
+    amount: "7.00 USDC",
+    detail: "Circle Resident wallet",
+    tx: deploymentV4.latestLiveRound.fundTxHash,
+  },
 ];
 
 function detectCategory(value: string) {
@@ -1459,7 +1484,7 @@ export default function Home() {
               <div className="empty-board">
                 <span>⌁</span>
                 <h3>{boardBusy ? "Reading Arc Testnet..." : "No funded, unassigned jobs loaded."}</h3>
-                <p>Connect the helper wallet and refresh. Job #2 will appear if it is still funded and unassigned.</p>
+                <p>Connect the Helper wallet and refresh. Any funded, unassigned Arc jobs will appear here.</p>
               </div>
             )}
             {liveError && <p className="live-error">{liveError}</p>}
@@ -1863,16 +1888,24 @@ export default function Home() {
         </div>
         <div className="wrap activity-panel scroll-reveal">
           <div className="activity-head"><div><span className="status-dot" /> LIVE ON ARC TESTNET</div><a href="https://testnet.arcscan.app" target="_blank">Open Arcscan ↗</a></div>
-          {activity.map((item, index) => (
+          {activity.map((item) => (
             <a
               className="activity-row"
-              key={item[0]}
-              href={index === 0 ? `https://testnet.arcscan.app/tx/${deploymentV4.payoutTxHash}` : "https://testnet.arcscan.app"}
+              key={item.label}
+              href={`https://testnet.arcscan.app/tx/${item.tx}`}
               target="_blank"
             >
-              <b>{item[0]}</b><span className={item[1].toLowerCase()}>{item[1]}</span><strong>{item[2]}</strong><small>{item[3]}</small>
+              <b>{item.label}</b><span className={item.status.toLowerCase()}>{item.status}</span><strong>{item.amount}</strong><small>{item.detail}</small>
             </a>
           ))}
+          <div className="deployment-proof evidence-proof">
+            <span>JOB #3 VERIFIED EVIDENCE</span>
+            <code>{deploymentV4.latestLiveRound.evidenceHash}</code>
+            <div className="proof-links">
+              <a href={deploymentV4.latestLiveRound.evidenceBlobUrl} target="_blank">View evidence ↗</a>
+              <a href={`https://testnet.arcscan.app/tx/${deploymentV4.latestLiveRound.evidenceTxHash}`} target="_blank">Inspect anchor tx ↗</a>
+            </div>
+          </div>
           <div className="deployment-proof">
             <span>LIVE DEMO CONTRACT</span>
             <code>{deploymentV4.contractAddress}</code>

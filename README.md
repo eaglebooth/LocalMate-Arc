@@ -113,6 +113,17 @@ Live:
 - Circle contract-execution and signing adapter
 - EOA and Circle SCA signature support in `LocalMateJobsV4`
 
+Latest verified live round:
+
+- Job `#3` funded with `7 USDC` by Circle Resident
+  `0x2606...146f`;
+- Circle Helper `0xd10b...4d45` signed, was assigned and anchored evidence
+  hash `0x9bc82e...b23254`;
+- Resident approved settlement: Helper received `6.825 USDC` and the
+  `0.175 USDC` platform fee was transferred on Arc Testnet;
+- payout transaction:
+  `0x10987ac546be7c3890628ad9d35b9403dea3d2c21e272ec9fd71f0450b9f39a0`.
+
 Planned, not presented as live:
 
 - ERC-8004 agent registration and reputation
