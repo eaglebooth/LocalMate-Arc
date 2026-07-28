@@ -475,6 +475,8 @@ export default function Home() {
     setWalletKind("");
     setCircleBalance(null);
     clearCircleWalletSession();
+    window.sessionStorage.removeItem("localmate-circle-auth");
+    window.sessionStorage.removeItem("localmate-circle-login-pending");
     externalProviderRef.current = null;
     setWalletMenu(false);
     setNotice("Wallet disconnected from LocalMate.");

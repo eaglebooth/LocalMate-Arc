@@ -19,9 +19,11 @@ type CircleWallet = {
 type StoredCircleAuth = {
   userToken: string;
   encryptionKey: string;
+  savedAt: number;
 };
 
 const CIRCLE_AUTH_KEY = "localmate-circle-auth";
+const CIRCLE_SESSION_MAX_AGE_MS = 15 * 60 * 1000;
 
 type Props = {
   open: boolean;
@@ -80,16 +82,35 @@ export default function CircleWalletModal({
         walletId: wallet.id,
         walletAddress: wallet.address,
       });
-      window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
       window.sessionStorage.removeItem("localmate-circle-login-pending");
       onConnected(wallet, usdc?.amount ?? "0");
       onClose();
+    }
+
+    async function restoreSession(userToken: string, encryptionKey: string) {
+      if (!sdk.current) return;
+      sdk.current.setAuthentication({ userToken, encryptionKey });
+      setBusy("Restoring your Circle Wallet...");
+      setError("");
+      try {
+        await loadWallets(userToken, 2);
+        setBusy("");
+      } catch (restoreError) {
+        window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
+        setBusy("");
+        setError(
+          restoreError instanceof Error
+            ? `${restoreError.message} Sign in with Google again.`
+            : "Circle session expired. Sign in with Google again.",
+        );
+      }
     }
 
     async function initialize(userToken: string, encryptionKey: string) {
       if (!sdk.current) return;
       sdk.current.setAuthentication({ userToken, encryptionKey });
       setBusy("Creating your secure Arc wallet...");
+      setError("");
       try {
         const result = await circleAction({ action: "initializeUser", userToken });
         if (result.challengeId) {
@@ -103,8 +124,18 @@ export default function CircleWalletModal({
       } catch (requestError) {
         const message =
           requestError instanceof Error ? requestError.message : "Wallet initialization failed.";
-        if (message.includes("155106") || message.toLowerCase().includes("already initialized")) {
-          await loadWallets(userToken, 3);
+        if (message.includes("155106") || /already(?:\s+been)?\s+initialized/i.test(message)) {
+          setBusy("Restoring your existing Arc wallet...");
+          try {
+            await loadWallets(userToken, 3);
+          } catch (loadError) {
+            setError(
+              loadError instanceof Error
+                ? loadError.message
+                : "Your Circle user exists, but the wallet could not be loaded.",
+            );
+            setBusy("");
+          }
         } else {
           setError(message);
           setBusy("");
@@ -143,6 +174,7 @@ export default function CircleWalletModal({
             JSON.stringify({
               userToken: result.userToken,
               encryptionKey: result.encryptionKey,
+              savedAt: Date.now(),
             } satisfies StoredCircleAuth),
           );
           void initialize(result.userToken, result.encryptionKey);
@@ -152,14 +184,16 @@ export default function CircleWalletModal({
       setReady(true);
 
       const savedAuth = window.sessionStorage.getItem(CIRCLE_AUTH_KEY);
-      if (
-        savedAuth &&
-        window.sessionStorage.getItem("localmate-circle-login-pending") === "true"
-      ) {
+      if (savedAuth) {
         try {
           const parsed = JSON.parse(savedAuth) as StoredCircleAuth;
-          if (parsed.userToken && parsed.encryptionKey) {
-            void initialize(parsed.userToken, parsed.encryptionKey);
+          const isFresh =
+            parsed.savedAt > 0 &&
+            Date.now() - parsed.savedAt < CIRCLE_SESSION_MAX_AGE_MS;
+          if (parsed.userToken && parsed.encryptionKey && isFresh) {
+            void restoreSession(parsed.userToken, parsed.encryptionKey);
+          } else {
+            window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
           }
         } catch {
           window.sessionStorage.removeItem(CIRCLE_AUTH_KEY);
