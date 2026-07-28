@@ -645,6 +645,31 @@ export default function Home() {
     return hash;
   }
 
+  async function ensureCircleWalletDeployed(account: string) {
+    if (walletKind !== "circle") return;
+    const currentCode = await arcPublicRpc("eth_getCode", [account, "latest"]) as string;
+    if (currentCode && currentCode !== "0x") return;
+
+    setBoardBusy("Activate your Circle helper wallet, then sign the application...");
+    const activationData = encodeFunctionData({
+      abi: usdcAbi,
+      functionName: "approve",
+      args: [deploymentV4.contractAddress as `0x${string}`, 0n],
+    });
+    await sendCircleTransaction(
+      "0x3600000000000000000000000000000000000000",
+      activationData,
+      "Activate helper wallet",
+    );
+
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      const deployedCode = await arcPublicRpc("eth_getCode", [account, "latest"]) as string;
+      if (deployedCode && deployedCode !== "0x") return;
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+    throw new Error("Circle approved activation, but the helper wallet is not deployed yet. Retry in a moment.");
+  }
+
   async function refreshLiveJobBoard() {
     setLiveError("");
     setBoardBusy("Reading funded jobs from Arc...");
@@ -720,6 +745,8 @@ export default function Home() {
       if (account.toLowerCase() === job.client.toLowerCase()) {
         throw new Error("The client wallet cannot apply to its own job. Switch to the helper wallet.");
       }
+      await ensureCircleWalletDeployed(account);
+      setBoardBusy(`Signing application for job #${job.id}...`);
       const digestData = encodeFunctionData({
         abi: v4Abi,
         functionName: "applicationDigest",
@@ -1145,7 +1172,7 @@ export default function Home() {
               <div>
                 <p className="kicker">LIVE JOB BOARD ON ARC</p>
                 <h2>Funded work, ready for applicants.</h2>
-                <p>Every listing below is read from LocalMateJobsV4. Apply with an EOA or Circle smart-wallet signature.</p>
+                <p>Every listing below is read from LocalMateJobsV4. Apply with an EOA or Circle smart-wallet signature. A new Circle SCA activates once before its first signature.</p>
               </div>
               <div>
                 <button className="wallet-button" onClick={() => setCircleModal(true)}>
@@ -1312,7 +1339,7 @@ export default function Home() {
                   <p>
                     {currentApplications.length
                       ? "Each application was signed by the applicant wallet. Selecting one records its consent hash on Arc."
-                      : "Switch to Helper, connect the second wallet and sign an application. No application fee is required."}
+                      : "Switch to Helper, connect the second wallet and sign an application. A new Circle SCA may request one activation confirmation; no application fee is required."}
                   </p>
                 </div>
                 <div className="resident-job-actions">
