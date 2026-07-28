@@ -340,6 +340,26 @@ footer { padding: 34px 0; background: #09231d; color: white; }
 
 .toast { position: fixed; right: 22px; top: 90px; z-index: 80; display: flex; gap: 20px; padding: 14px 16px; border: 0; border-radius: 10px; background: #fff; color: var(--ink); box-shadow: 0 15px 40px rgba(0,0,0,.18); font-size: 11px; font-weight: 700; cursor: pointer; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(7,27,22,.72); backdrop-filter: blur(8px); }
+.circle-modal-backdrop { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: 20px; background: rgba(8,28,23,.76); backdrop-filter: blur(10px); }
+.circle-wallet-modal { position: relative; width: min(470px,100%); padding: 30px; border: 1px solid rgba(186,242,210,.32); border-radius: 18px; background: #0d2d25; color: white; box-shadow: 0 35px 100px rgba(0,0,0,.38); animation: pop .3s ease; }
+.circle-modal-close { position: absolute; right: 20px; top: 18px; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.2); border-radius: 9px; background: #246edb; color: white; font-size: 20px; cursor: pointer; }
+.circle-label { margin: 0 0 8px; color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.circle-wallet-modal h2 { margin: 0 0 18px; font: 800 24px var(--font-display); }
+.circle-security { padding: 15px; border: 1px solid rgba(117,182,157,.32); border-radius: 11px; background: rgba(22,67,54,.72); }
+.circle-security b { display: block; font-size: 12px; }
+.circle-security p { margin: 7px 0 0; color: rgba(255,255,255,.68); font-size: 12px; line-height: 1.5; }
+.circle-external, .circle-google { width: 100%; margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; color: white; font: 800 12px var(--font-body); cursor: pointer; }
+.circle-external { background: rgba(255,255,255,.04); }
+.circle-google { background: #111827; }
+.circle-google:disabled { cursor: wait; opacity: .62; }
+.circle-external span, .circle-google span { display: inline-grid; width: 22px; height: 22px; margin-right: 7px; place-items: center; border-radius: 50%; background: white; color: #246edb; }
+.circle-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: rgba(255,255,255,.38); font-size: 8px; font-weight: 800; }
+.circle-divider::before, .circle-divider::after { content: ""; height: 1px; flex: 1; background: rgba(255,255,255,.14); }
+.circle-email-coming { padding: 13px 14px; border: 1px dashed rgba(255,255,255,.2); border-radius: 10px; }
+.circle-email-coming b, .circle-email-coming small { display: block; }
+.circle-email-coming b { font-size: 11px; }.circle-email-coming small { margin-top: 4px; color: rgba(255,255,255,.5); font-size: 9px; }
+.circle-error { margin: 13px 0 0; padding: 10px; border-radius: 8px; background: rgba(244,131,103,.14); color: #ffb5a3; font-size: 10px; line-height: 1.45; }
+.circle-fine { display: block; margin-top: 14px; color: rgba(255,255,255,.46); font-size: 9px; text-align: center; }
 .profile-modal { position: relative; width: min(440px,100%); padding: 34px; border-radius: 22px; background: var(--paper); box-shadow: 0 30px 90px rgba(0,0,0,.3); animation: pop .3s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(15px) scale(.98); } }
 .modal-close { position: absolute; right: 18px; top: 14px; border: 0; background: none; font-size: 24px; cursor: pointer; }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parseUnits, toBytes } from "viem";
 import deploymentV3 from "../public/arc-v3-deployment.json";
+import CircleWalletModal from "./CircleWalletModal";
 
 type Helper = {
   name: string;
@@ -251,6 +252,9 @@ export default function Home() {
   const [liveApplications, setLiveApplications] = useState<LiveApplication[]>([]);
   const [boardBusy, setBoardBusy] = useState("");
   const [walletMenu, setWalletMenu] = useState(false);
+  const [circleModal, setCircleModal] = useState(false);
+  const [walletKind, setWalletKind] = useState<"external" | "circle" | "">("");
+  const [circleBalance, setCircleBalance] = useState<string | null>(null);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceRecord, setEvidenceRecord] = useState<EvidenceRecord | null>(null);
 
@@ -405,6 +409,8 @@ export default function Home() {
       });
       const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
       setWallet(accounts[0]);
+      setWalletKind("external");
+      setCircleBalance(null);
       setNotice("Connected to Arc Testnet.");
     } catch {
       setNotice("Wallet connection was cancelled.");
@@ -438,9 +444,21 @@ export default function Home() {
       // Some injected wallets do not implement permission revocation.
     }
     setWallet("");
+    setWalletKind("");
+    setCircleBalance(null);
     setWalletMenu(false);
     setNotice("Wallet disconnected from LocalMate.");
   }
+
+  const connectCircleWallet = useCallback(
+    (connectedWallet: { id: string; address: string; blockchain: string }, balance: string | null) => {
+      setWallet(connectedWallet.address);
+      setWalletKind("circle");
+      setCircleBalance(balance);
+      setNotice("Circle Wallet connected on Arc Testnet.");
+    },
+    [],
+  );
 
   async function ensureArcNetwork() {
     const eth = injectedProvider();
@@ -880,15 +898,19 @@ export default function Home() {
               }}>Helper</button>
             </div>
             <div className="wallet-control">
-              <button className="wallet-button" onClick={() => wallet ? setWalletMenu(!walletMenu) : void connectWallet()}>
+              <button className="wallet-button" onClick={() => wallet ? setWalletMenu(!walletMenu) : setCircleModal(true)}>
                 <span className="status-dot" />
                 {wallet ? `${wallet.slice(0, 5)}…${wallet.slice(-4)}` : "Connect wallet"}
                 {wallet && <b className="wallet-caret">⌄</b>}
               </button>
               {wallet && walletMenu && (
                 <div className="wallet-menu">
-                  <span><small>Connected on Arc</small><code>{wallet.slice(0, 8)}...{wallet.slice(-6)}</code></span>
-                  <button onClick={() => void connectWallet()}>Switch account</button>
+                  <span>
+                    <small>{walletKind === "circle" ? "Circle Wallet · Arc Testnet" : "Connected on Arc"}</small>
+                    <code>{wallet.slice(0, 8)}...{wallet.slice(-6)}</code>
+                    {walletKind === "circle" && circleBalance !== null && <small>{circleBalance} USDC</small>}
+                  </span>
+                  <button onClick={() => setCircleModal(true)}>Switch wallet</button>
                   <button className="disconnect" onClick={() => void disconnectWallet()}>Disconnect</button>
                 </div>
               )}
@@ -896,6 +918,13 @@ export default function Home() {
           </div>
         </nav>
       </header>
+
+      <CircleWalletModal
+        open={circleModal}
+        onClose={() => setCircleModal(false)}
+        onExternalWallet={() => void connectWallet()}
+        onConnected={connectCircleWallet}
+      />
 
       <section id="top" className="hero">
         <div className="hero-image" aria-label="A resident meets a trusted local dog walker" />
@@ -960,7 +989,7 @@ export default function Home() {
                 <p>Every listing below is read from LocalMateJobsV3. Apply with a contract-verifiable wallet signature, without paying gas.</p>
               </div>
               <div>
-                <button className="wallet-button" onClick={connectWallet}>
+                <button className="wallet-button" onClick={() => setCircleModal(true)}>
                   <span className="status-dot" />
                   {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect only to apply"}
                 </button>
@@ -1099,7 +1128,7 @@ export default function Home() {
                 <small>
                   Requires three wallet confirmations on Arc Testnet.
                 </small>
-                {!wallet && <button className="connect-inline" onClick={connectWallet}>Connect Arc wallet first</button>}
+                {!wallet && <button className="connect-inline" onClick={() => setCircleModal(true)}>Connect Arc wallet first</button>}
                 {payoutPreview && (
                   <p className="payout-preview">
                     Provider receives <b>{payoutPreview.provider.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")} USDC</b>

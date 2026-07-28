@@ -19,9 +19,11 @@
     "arc:nanopayment": "node --env-file=.env.deploy scripts/nanopayments-demo.mjs"
   },
   "dependencies": {
+    "@circle-fin/w3s-pw-web-sdk": "^1.1.11",
     "@circle-fin/x402-batching": "^3.2.0",
     "@x402/core": "^2.19.0",
     "@x402/evm": "^2.19.0",
+    "cookies-next": "^6.1.1",
     "drizzle-orm": "0.45.2",
     "express": "^5.2.1",
     "next": "16.2.6",
