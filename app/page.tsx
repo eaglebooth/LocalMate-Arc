@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parseUnits, toBytes } from "viem";
 import deploymentV3 from "../public/arc-v3-deployment.json";
 import CircleWalletModal from "./CircleWalletModal";
+import ExternalWalletModal, { type Eip1193Provider } from "./ExternalWalletModal";
 import {
   circleAction,
   clearCircleWalletSession,
@@ -259,10 +260,12 @@ export default function Home() {
   const [boardBusy, setBoardBusy] = useState("");
   const [walletMenu, setWalletMenu] = useState(false);
   const [circleModal, setCircleModal] = useState(false);
+  const [externalWalletModal, setExternalWalletModal] = useState(false);
   const [walletKind, setWalletKind] = useState<"external" | "circle" | "">("");
   const [circleBalance, setCircleBalance] = useState<string | null>(null);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidenceRecord, setEvidenceRecord] = useState<EvidenceRecord | null>(null);
+  const externalProviderRef = useRef<Eip1193Provider | null>(null);
 
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>(".scroll-reveal");
@@ -394,8 +397,8 @@ export default function Home() {
     [liveApplications, liveJobId],
   );
 
-  async function connectWallet() {
-    const eth = (window as Window & { ethereum?: EthereumProvider }).ethereum;
+  async function connectWallet(selectedProvider?: Eip1193Provider, providerName = "Wallet") {
+    const eth = selectedProvider ?? (window as Window & { ethereum?: EthereumProvider }).ethereum;
     if (!eth) {
       setNotice("Install an EVM wallet to connect to Arc Testnet.");
       return;
@@ -414,17 +417,19 @@ export default function Home() {
         ],
       });
       const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
+      externalProviderRef.current = eth;
       setWallet(accounts[0]);
       setWalletKind("external");
       setCircleBalance(null);
-      setNotice("Connected to Arc Testnet.");
+      setExternalWalletModal(false);
+      setNotice(`${providerName} connected to Arc Testnet.`);
     } catch {
       setNotice("Wallet connection was cancelled.");
     }
   }
 
   function injectedProvider() {
-    return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+    return externalProviderRef.current ?? (window as Window & { ethereum?: EthereumProvider }).ethereum;
   }
 
   async function arcPublicRpc(method: string, params: unknown[]) {
@@ -453,6 +458,7 @@ export default function Home() {
     setWalletKind("");
     setCircleBalance(null);
     clearCircleWalletSession();
+    externalProviderRef.current = null;
     setWalletMenu(false);
     setNotice("Wallet disconnected from LocalMate.");
   }
@@ -737,13 +743,17 @@ export default function Home() {
         [{ to: deploymentV3.contractAddress, data: nextJobData }, "latest"],
       ) as `0x${string}`;
       const jobId = decodeFunctionResult({ abi: v3Abi, functionName: "nextJobId", data: rawJobId });
+      const latestBlock = await arcPublicRpc(
+        "eth_getBlockByNumber",
+        ["latest", false],
+      ) as { timestamp: string };
       const createData = encodeFunctionData({
         abi: v3Abi,
         functionName: "createJob",
         args: [
           account as `0x${string}`,
           budgetUnits,
-          BigInt(Math.floor(Date.now() / 1000) + 86_400),
+          BigInt(latestBlock.timestamp) + 86_400n,
           keccak256(toBytes(task)),
         ],
       });
@@ -1009,8 +1019,13 @@ export default function Home() {
       <CircleWalletModal
         open={circleModal}
         onClose={() => setCircleModal(false)}
-        onExternalWallet={() => void connectWallet()}
+        onExternalWallet={() => setExternalWalletModal(true)}
         onConnected={connectCircleWallet}
+      />
+      <ExternalWalletModal
+        open={externalWalletModal}
+        onClose={() => setExternalWalletModal(false)}
+        onSelect={(provider, name) => void connectWallet(provider, name)}
       />
 
       <section id="top" className="hero">

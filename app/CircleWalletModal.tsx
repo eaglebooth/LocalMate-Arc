@@ -167,14 +167,23 @@ export default function CircleWalletModal({
     <div className="circle-modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="circle-wallet-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
         <button className="circle-modal-close" onClick={onClose} aria-label="Close">×</button>
-        <p className="circle-label">CIRCLE USER-CONTROLLED WALLET</p>
+        <div className="circle-brand">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M16 3a13 13 0 1 0 0 26" />
+            <path d="M16 8a8 8 0 1 0 0 16" />
+            <path d="M20 4.2a13 13 0 0 1 8 8" />
+            <path d="M20 27.8a13 13 0 0 0 8-8" />
+          </svg>
+          <span>CIRCLE WALLET</span>
+        </div>
+        <p className="circle-label">USER-CONTROLLED · ARC TESTNET</p>
         <h2>Connect to LocalMate.</h2>
         <div className="circle-security">
           <b>Secure Arc wallet, no extension required.</b>
           <p>Sign in with Google to create or recover your user-owned Circle Wallet on Arc Testnet.</p>
         </div>
         <button className="circle-external" onClick={() => { onExternalWallet(); onClose(); }}>
-          <span>▣</span> Connect a crypto wallet
+          <span>▣</span> Choose a crypto wallet <i>›</i>
         </button>
         <button className="circle-google" onClick={continueWithGoogle} disabled={!ready || Boolean(busy)}>
           <span>G</span> {busy || "Continue with Google"}
@@ -182,7 +191,7 @@ export default function CircleWalletModal({
         <div className="circle-divider"><span>OR</span></div>
         <div className="circle-email-coming">
           <b>Email login</b>
-          <small>Configured in Circle Console · UI integration next</small>
+          <small>Google login is ready · Email OTP integration next</small>
         </div>
         {error && <p className="circle-error">{error}</p>}
         <small className="circle-fine">Your keys remain user-controlled through Circle’s MPC infrastructure.</small>

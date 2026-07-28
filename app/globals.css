@@ -341,15 +341,19 @@ footer { padding: 34px 0; background: #09231d; color: white; }
 .toast { position: fixed; right: 22px; top: 90px; z-index: 80; display: flex; gap: 20px; padding: 14px 16px; border: 0; border-radius: 10px; background: #fff; color: var(--ink); box-shadow: 0 15px 40px rgba(0,0,0,.18); font-size: 11px; font-weight: 700; cursor: pointer; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(7,27,22,.72); backdrop-filter: blur(8px); }
 .circle-modal-backdrop { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: 20px; background: rgba(8,28,23,.76); backdrop-filter: blur(10px); }
-.circle-wallet-modal { position: relative; width: min(470px,100%); padding: 30px; border: 1px solid rgba(186,242,210,.32); border-radius: 18px; background: #0d2d25; color: white; box-shadow: 0 35px 100px rgba(0,0,0,.38); animation: pop .3s ease; }
+.circle-wallet-modal { position: relative; width: min(460px,100%); padding: 28px; border: 1px solid rgba(121,216,179,.34); border-radius: 20px; background: linear-gradient(155deg,#0b2b23,#0c342a); color: white; box-shadow: 0 35px 100px rgba(0,0,0,.42); animation: pop .3s ease; }
 .circle-modal-close { position: absolute; right: 20px; top: 18px; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.2); border-radius: 9px; background: #246edb; color: white; font-size: 20px; cursor: pointer; }
 .circle-label { margin: 0 0 8px; color: var(--mint); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.circle-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; color: #8ff0cd; font-size: 11px; font-weight: 900; letter-spacing: .08em; }
+.circle-brand svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .circle-wallet-modal h2 { margin: 0 0 18px; font: 800 24px var(--font-display); }
 .circle-security { padding: 15px; border: 1px solid rgba(117,182,157,.32); border-radius: 11px; background: rgba(22,67,54,.72); }
 .circle-security b { display: block; font-size: 12px; }
 .circle-security p { margin: 7px 0 0; color: rgba(255,255,255,.68); font-size: 12px; line-height: 1.5; }
 .circle-external, .circle-google { width: 100%; margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; color: white; font: 800 12px var(--font-body); cursor: pointer; }
 .circle-external { background: rgba(255,255,255,.04); }
+.circle-external { position: relative; }
+.circle-external i { position: absolute; right: 16px; font-style: normal; font-size: 20px; font-weight: 400; }
 .circle-google { background: #111827; }
 .circle-google:disabled { cursor: wait; opacity: .62; }
 .circle-external span, .circle-google span { display: inline-grid; width: 22px; height: 22px; margin-right: 7px; place-items: center; border-radius: 50%; background: white; color: #246edb; }
@@ -360,6 +364,28 @@ footer { padding: 34px 0; background: #09231d; color: white; }
 .circle-email-coming b { font-size: 11px; }.circle-email-coming small { margin-top: 4px; color: rgba(255,255,255,.5); font-size: 9px; }
 .circle-error { margin: 13px 0 0; padding: 10px; border-radius: 8px; background: rgba(244,131,103,.14); color: #ffb5a3; font-size: 10px; line-height: 1.45; }
 .circle-fine { display: block; margin-top: 14px; color: rgba(255,255,255,.46); font-size: 9px; text-align: center; }
+.wallet-picker { width: min(430px,100%); padding: 22px; border: 1px solid rgba(255,255,255,.13); border-radius: 24px; background: #171a19; color: #fff; box-shadow: 0 35px 100px rgba(0,0,0,.5); animation: pop .25s ease; }
+.wallet-picker-head { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; margin-bottom: 18px; }
+.wallet-picker-head h2 { margin: 0; text-align: center; font: 700 18px var(--font-display); }
+.wallet-picker-head button,.wallet-help { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 9px; background: transparent; color: #fff; font-size: 21px; }
+.wallet-picker-head button { cursor: pointer; }
+.wallet-help { width: 17px; height: 17px; margin-left: 7px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; font-size: 11px; font-weight: 800; }
+.wallet-options { display: grid; gap: 8px; }
+.wallet-options button { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 12px; border: 1px solid transparent; border-radius: 13px; background: transparent; color: #fff; text-align: left; cursor: pointer; }
+.wallet-options button:hover { border-color: rgba(119,235,190,.3); background: rgba(255,255,255,.055); }
+.wallet-option-icon { display: grid; width: 38px; height: 38px; place-items: center; overflow: hidden; border-radius: 11px; background: rgba(255,255,255,.07); font-size: 20px; }
+.wallet-option-icon img { width: 100%; height: 100%; object-fit: cover; }
+.wallet-options b,.wallet-options small { display: block; }
+.wallet-options b { font-size: 14px; }
+.wallet-options small { margin-top: 3px; color: rgba(255,255,255,.46); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+.wallet-options em { color: rgba(255,255,255,.55); font-style: normal; font-size: 20px; }
+.wallet-options .walletconnect-preview { margin-top: 8px; opacity: .62; cursor: not-allowed; background: rgba(41,112,255,.09); }
+.wallet-options .walletconnect-preview:hover { border-color: transparent; }
+.walletconnect-icon { color: #72a2ff; }
+.wallet-discovery { padding: 24px; color: rgba(255,255,255,.56); font-size: 11px; text-align: center; }
+.wallet-loader { display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid rgba(255,255,255,.2); border-top-color: #8ff0cd; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: middle; }
+.wallet-picker-note { margin: 17px 0 0; color: rgba(255,255,255,.38); font-size: 9px; text-align: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .profile-modal { position: relative; width: min(440px,100%); padding: 34px; border-radius: 22px; background: var(--paper); box-shadow: 0 30px 90px rgba(0,0,0,.3); animation: pop .3s ease; }
 @keyframes pop { from { opacity: 0; transform: translateY(15px) scale(.98); } }
 .modal-close { position: absolute; right: 18px; top: 14px; border: 0; background: none; font-size: 24px; cursor: pointer; }
