@@ -49,7 +49,9 @@ export default function CircleWalletModal({
     const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
     async function loadWallets(userToken: string, retries = 0): Promise<void> {
+      if (cancelled) return;
       const walletData = await circleAction({ action: "listWallets", userToken });
+      if (cancelled) return;
       const wallet = (walletData.wallets as CircleWallet[] | undefined)?.find(
         (item) => item.blockchain === "ARC-TESTNET",
       );
@@ -66,6 +68,7 @@ export default function CircleWalletModal({
         userToken,
         walletId: wallet.id,
       });
+      if (cancelled) return;
       const balances = (balanceData.tokenBalances ?? []) as Array<{
         amount?: string;
         token?: { symbol?: string; name?: string };
@@ -88,7 +91,7 @@ export default function CircleWalletModal({
     }
 
     async function restoreSession(userToken: string, encryptionKey: string) {
-      if (!sdk.current) return;
+      if (!sdk.current || cancelled) return;
       sdk.current.setAuthentication({ userToken, encryptionKey });
       setBusy("Restoring your Circle Wallet...");
       setError("");
@@ -107,7 +110,7 @@ export default function CircleWalletModal({
     }
 
     async function initialize(userToken: string, encryptionKey: string) {
-      if (!sdk.current) return;
+      if (!sdk.current || cancelled) return;
       sdk.current.setAuthentication({ userToken, encryptionKey });
       setBusy("Creating your secure Arc wallet...");
       setError("");

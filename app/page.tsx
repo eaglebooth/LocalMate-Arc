@@ -261,6 +261,7 @@ export default function Home() {
   const [boardBusy, setBoardBusy] = useState("");
   const [walletMenu, setWalletMenu] = useState(false);
   const [circleModal, setCircleModal] = useState(false);
+  const [circleModalVersion, setCircleModalVersion] = useState(0);
   const [externalWalletModal, setExternalWalletModal] = useState(false);
   const [walletKind, setWalletKind] = useState<"external" | "circle" | "">("");
   const [circleBalance, setCircleBalance] = useState<string | null>(null);
@@ -482,6 +483,8 @@ export default function Home() {
     clearCircleWalletSession();
     window.sessionStorage.removeItem("localmate-circle-auth");
     window.sessionStorage.removeItem("localmate-circle-login-pending");
+    setCircleModal(false);
+    setCircleModalVersion((version) => version + 1);
     externalProviderRef.current = null;
     setWalletMenu(false);
     setNotice("Wallet disconnected from LocalMate.");
@@ -511,6 +514,18 @@ export default function Home() {
   const closeCircleModal = useCallback(() => {
     setCircleModal(false);
   }, []);
+
+  function switchCircleWallet() {
+    clearCircleWalletSession();
+    window.sessionStorage.removeItem("localmate-circle-auth");
+    window.sessionStorage.removeItem("localmate-circle-login-pending");
+    setWallet("");
+    setWalletKind("");
+    setCircleBalance(null);
+    setWalletMenu(false);
+    setCircleModalVersion((version) => version + 1);
+    setCircleModal(true);
+  }
 
   const openExternalWallet = useCallback(() => {
     if (reownAppKit) {
@@ -1096,7 +1111,7 @@ export default function Home() {
                   <button className="copy-address" onClick={() => void copyWalletAddress()}>
                     Copy full address
                   </button>
-                  <button onClick={() => setCircleModal(true)}>Switch wallet</button>
+                  <button onClick={switchCircleWallet}>Switch wallet</button>
                   <button className="disconnect" onClick={() => void disconnectWallet()}>Disconnect</button>
                 </div>
               )}
@@ -1106,6 +1121,7 @@ export default function Home() {
       </header>
 
       <CircleWalletModal
+        key={circleModalVersion}
         open={circleModal}
         onClose={closeCircleModal}
         onExternalWallet={openExternalWallet}
