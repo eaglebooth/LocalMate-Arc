@@ -22,6 +22,22 @@ function jsonError(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
+function contentTypeFor(filename: string) {
+  const extension = filename.split(".").pop()?.toLowerCase();
+  return ({
+    gif: "image/gif",
+    jpeg: "image/jpeg",
+    jpg: "image/jpeg",
+    jfif: "image/jpeg",
+    mov: "video/quicktime",
+    mp4: "video/mp4",
+    pdf: "application/pdf",
+    png: "image/png",
+    webm: "video/webm",
+    webp: "image/webp",
+  } as Record<string, string>)[extension ?? ""] ?? "application/octet-stream";
+}
+
 export async function GET(request: Request) {
   try {
     const jobId = new URL(request.url).searchParams.get("jobId");
@@ -43,7 +59,7 @@ export async function GET(request: Request) {
       evidenceHash: `0x${match[1].toLowerCase()}`,
       name: match[2],
       size: blob.size,
-      type: blob.contentType,
+      type: contentTypeFor(match[2]),
     });
   } catch (error) {
     console.error("Evidence lookup failed", error);
