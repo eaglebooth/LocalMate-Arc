@@ -251,7 +251,9 @@ export default function Home() {
   const [role, setRole] = useState<UserRole>("resident");
   const [liveStage, setLiveStage] = useState<LiveStage>("idle");
   const [liveJobId, setLiveJobId] = useState<bigint | null>(null);
+  const [liveClient, setLiveClient] = useState("");
   const [liveProvider, setLiveProvider] = useState("");
+  const [liveEvaluator, setLiveEvaluator] = useState("");
   const [liveBusy, setLiveBusy] = useState("");
   const [liveError, setLiveError] = useState("");
   const [liveTxs, setLiveTxs] = useState<Array<{ label: string; hash: string }>>([]);
@@ -313,7 +315,9 @@ export default function Home() {
           jobId?: string;
           stage?: LiveStage;
           budget?: string;
+          client?: string;
           provider?: string;
+          evaluator?: string;
           applications?: LiveApplication[];
         } | null;
         const storedApplications = JSON.parse(
@@ -332,7 +336,9 @@ export default function Home() {
           }
         }
         if (session?.budget) setBudgetUsdc(session.budget);
+        if (session?.client) setLiveClient(session.client);
         if (session?.provider) setLiveProvider(session.provider);
+        if (session?.evaluator) setLiveEvaluator(session.evaluator);
         setLiveApplications(storedApplications);
       } catch {
         window.localStorage.removeItem(LIVE_SESSION_KEY);
@@ -349,14 +355,49 @@ export default function Home() {
       jobId: liveJobId?.toString() ?? null,
       stage: liveStage,
       budget: budgetUsdc,
+      client: liveClient,
       provider: liveProvider,
+      evaluator: liveEvaluator,
     }));
-  }, [budgetUsdc, liveJobId, liveProvider, liveStage, storageHydrated]);
+  }, [budgetUsdc, liveClient, liveEvaluator, liveJobId, liveProvider, liveStage, storageHydrated]);
 
   useEffect(() => {
     if (!storageHydrated) return;
     window.localStorage.setItem(LIVE_APPLICATIONS_KEY, JSON.stringify(liveApplications));
   }, [liveApplications, storageHydrated]);
+
+  useEffect(() => {
+    if (liveJobId === null) return;
+    let cancelled = false;
+    const syncParticipants = async () => {
+      try {
+        const job = await readLiveJob(liveJobId);
+        if (cancelled) return;
+        setLiveClient(job.client);
+        setLiveProvider(job.provider === "0x0000000000000000000000000000000000000000" ? "" : job.provider);
+        setLiveEvaluator(job.evaluator);
+        const onchainStages: Partial<Record<number, LiveStage>> = {
+          1: "funded",
+          2: "assigned",
+          3: "submitted",
+          4: "disputed",
+          5: "completed",
+          6: "rejected",
+          7: "cancelled",
+        };
+        const syncedStage = onchainStages[job.status];
+        if (syncedStage) setLiveStage(syncedStage);
+      } catch {
+        // Keep the last known session state if Arc RPC is briefly unavailable.
+      }
+    };
+    void syncParticipants();
+    return () => {
+      cancelled = true;
+    };
+    // readLiveJob is a stable component helper; rerun only when the active job changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveJobId]);
 
   const taskCategory = useMemo(() => detectCategory(task), [task]);
   const budgetUnits = useMemo(() => {
@@ -419,6 +460,12 @@ export default function Home() {
     () => liveApplications.filter((application) => application.jobId === liveJobId?.toString()),
     [liveApplications, liveJobId],
   );
+  const connectedAddress = wallet.toLowerCase();
+  const isAssignedProvider = Boolean(connectedAddress) && connectedAddress === liveProvider.toLowerCase();
+  const isJobEvaluator = Boolean(connectedAddress) && connectedAddress === liveEvaluator.toLowerCase();
+  const isJobParty = Boolean(connectedAddress) && (
+    connectedAddress === liveClient.toLowerCase() || connectedAddress === liveProvider.toLowerCase()
+  );
 
   async function connectWallet(selectedProvider?: Eip1193Provider, providerName = "Wallet") {
     const eth = selectedProvider ?? (window as Window & { ethereum?: EthereumProvider }).ethereum;
@@ -465,6 +512,49 @@ export default function Home() {
     const payload = await response.json() as { result?: unknown; error?: { message?: string } };
     if (payload.error) throw new Error(payload.error.message || "Arc RPC request failed.");
     return payload.result;
+  }
+
+  async function readLiveJob(jobId: bigint): Promise<LiveJobRecord> {
+    const data = encodeFunctionData({ abi: v4Abi, functionName: "jobs", args: [jobId] });
+    const raw = await arcPublicRpc(
+      "eth_call",
+      [{ to: deploymentV4.contractAddress, data }, "latest"],
+    ) as `0x${string}`;
+    const decoded = decodeFunctionResult({ abi: v4Abi, functionName: "jobs", data: raw });
+    return {
+      id: jobId,
+      client: decoded[0],
+      provider: decoded[1],
+      evaluator: decoded[2],
+      budget: decoded[3],
+      expiresAt: decoded[4],
+      status: decoded[6],
+      requirementsHash: decoded[7],
+    };
+  }
+
+  async function requireLiveRole(required: "provider" | "evaluator" | "party") {
+    if (liveJobId === null) throw new Error("No active Arc job is selected.");
+    const account = await activeAccount();
+    const job = await readLiveJob(liveJobId);
+    const current = account.toLowerCase();
+    const provider = job.provider.toLowerCase();
+    const evaluator = job.evaluator.toLowerCase();
+    const client = job.client.toLowerCase();
+    const allowed = required === "provider"
+      ? current === provider
+      : required === "evaluator"
+        ? current === evaluator
+        : current === client || current === provider;
+    if (!allowed) {
+      const instruction = required === "provider"
+        ? "Switch to the assigned Helper wallet."
+        : required === "evaluator"
+          ? "Switch to the Resident wallet that created this job."
+          : "Switch to either the Resident or assigned Helper wallet.";
+      throw new Error(`This wallet is not authorized for that action. ${instruction}`);
+    }
+    return { account, job };
   }
 
   async function disconnectWallet() {
@@ -857,6 +947,8 @@ export default function Home() {
         ],
       });
       await sendLiveTransaction(deploymentV4.contractAddress, createData, "Create job");
+      setLiveClient(account);
+      setLiveEvaluator(account);
 
       setLiveBusy(`Approving ${budgetUsdc} USDC...`);
       const approveData = encodeFunctionData({
@@ -944,7 +1036,7 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Uploading and hashing evidence...");
     try {
-      const provider = await activeAccount();
+      const { account: provider } = await requireLiveRole("provider");
       const body = new FormData();
       body.append("file", evidenceFile);
       body.append("jobId", liveJobId.toString());
@@ -988,6 +1080,7 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Rejecting evidence and returning escrow...");
     try {
+      await requireLiveRole("evaluator");
       const data = encodeFunctionData({
         abi: v4Abi,
         functionName: "reject",
@@ -1008,6 +1101,7 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Opening an onchain dispute...");
     try {
+      await requireLiveRole("party");
       const data = encodeFunctionData({
         abi: v4Abi,
         functionName: "raiseDispute",
@@ -1027,6 +1121,7 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Resolving dispute on Arc...");
     try {
+      await requireLiveRole("evaluator");
       const data = encodeFunctionData({
         abi: v4Abi,
         functionName: "resolveDispute",
@@ -1047,6 +1142,7 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Approving payout...");
     try {
+      await requireLiveRole("evaluator");
       const data = encodeFunctionData({ abi: v4Abi, functionName: "complete", args: [liveJobId] });
       await sendLiveTransaction(deploymentV4.contractAddress, data, "Complete and payout");
       setLiveStage("completed");
@@ -1462,12 +1558,18 @@ export default function Home() {
                           setEvidenceFile(nextFile);
                           setEvidenceRecord(null);
                         }}
-                        disabled={liveStage !== "assigned"}
+                        disabled={liveStage !== "assigned" || !isAssignedProvider}
                       />
                       <b>{evidenceFile?.name ?? "Choose evidence file"}</b>
                       <small>{evidenceFile ? `${(evidenceFile.size / 1024 / 1024).toFixed(2)} MB` : "Maximum 1 MB"}</small>
                     </label>
-                    <button onClick={submitLiveWork} disabled={liveStage !== "assigned" || !evidenceFile || Boolean(liveBusy)}>Upload + anchor on Arc</button>
+                    <button
+                      onClick={submitLiveWork}
+                      disabled={liveStage !== "assigned" || !isAssignedProvider || !evidenceFile || Boolean(liveBusy)}
+                      title={!isAssignedProvider ? "Only the assigned Helper wallet can submit evidence." : undefined}
+                    >
+                      {isAssignedProvider ? "Upload + anchor on Arc" : "Connect assigned Helper wallet"}
+                    </button>
                   </div>
                   <div className={["completed", "rejected", "disputed"].includes(liveStage) ? "done" : liveStage === "submitted" ? "active" : ""}>
                     <span>2</span><b>Resident reviews</b>
@@ -1479,9 +1581,29 @@ export default function Home() {
                       </a>
                     )}
                     <div className="evidence-actions">
-                      <button onClick={completeLiveJob} disabled={liveStage !== "submitted" || Boolean(liveBusy)}>Approve + pay</button>
-                      <button className="secondary-action" onClick={rejectLiveEvidence} disabled={liveStage !== "submitted" || Boolean(liveBusy)}>Reject + refund</button>
-                      <button className="secondary-action" onClick={disputeLiveJob} disabled={liveStage !== "submitted" || Boolean(liveBusy)}>Open dispute</button>
+                      <button
+                        onClick={completeLiveJob}
+                        disabled={liveStage !== "submitted" || !isJobEvaluator || Boolean(liveBusy)}
+                        title={!isJobEvaluator ? "Only the Resident wallet that created this job can approve payout." : undefined}
+                      >
+                        {isJobEvaluator ? "Approve + pay" : "Resident approval required"}
+                      </button>
+                      <button
+                        className="secondary-action"
+                        onClick={rejectLiveEvidence}
+                        disabled={liveStage !== "submitted" || !isJobEvaluator || Boolean(liveBusy)}
+                        title={!isJobEvaluator ? "Only the Resident wallet that created this job can reject evidence." : undefined}
+                      >
+                        Reject + refund
+                      </button>
+                      <button
+                        className="secondary-action"
+                        onClick={disputeLiveJob}
+                        disabled={liveStage !== "submitted" || !isJobParty || Boolean(liveBusy)}
+                        title={!isJobParty ? "Only the Resident or assigned Helper can open a dispute." : undefined}
+                      >
+                        Open dispute
+                      </button>
                     </div>
                   </div>
                   <div className={liveStage === "completed" ? "done" : liveStage === "disputed" ? "active" : ""}>
