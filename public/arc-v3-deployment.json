@@ -9,7 +9,17 @@
   "deployedAt": "2026-07-28T02:36:28.025Z",
   "deployTxHash": "0x22e933cc67f1dad0b91400b29e6c9c9c236b7f554b28ae4530805792420b0f9f",
   "testJobId": "1",
-  "payoutTxHash": "0x895f85b39ce2c108e222dc03fe06d846ca2e85f2c090936d8165490b5c3eb734",
+  "payoutTxHash": "0x7a84c243e9b8ee0627f768f7bc9602d17efd98fd7816d886aaa02ab66c4dde2f",
   "version": "V4",
-  "supportsCircleSCA": true
+  "supportsCircleSCA": true,
+  "latestLiveRound": {
+    "jobId": "2",
+    "budgetUsdc": "0.01",
+    "resident": "0xeb57bc7125fa60d7482CE12058397369AB3581f8",
+    "helper": "0x2da5393d7BBb9A037dc3abB56DbbC5C150fc843f",
+    "evidenceHash": "0x4ff7142489eaa7336becd371583a1792d7a9c2fa869775d3ce8eb58e49e201cf",
+    "createTxHash": "0x6d38ff1adb061193b76b26bd92efad0d315bf4e9c224e4ecd36033e02fd0c44d",
+    "payoutTxHash": "0x7a84c243e9b8ee0627f768f7bc9602d17efd98fd7816d886aaa02ab66c4dde2f",
+    "completedAt": "2026-07-28T03:24:54.309Z"
+  }
 }
