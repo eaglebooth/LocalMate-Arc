@@ -1062,6 +1062,22 @@ export default function Home() {
     void createAndFundLiveJob();
   }
 
+  function switchRole(nextRole: UserRole) {
+    setRole(nextRole);
+    window.setTimeout(() => {
+      void refreshLiveJobBoard();
+      const activeWorkflow =
+        jobStage === "assigned" ||
+        ["assigned", "submitted", "completed", "rejected", "disputed"].includes(liveStage);
+      const targetId =
+        activeWorkflow || nextRole === "resident" ? "matches" : "job-board";
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+  }
+
   return (
     <main>
       <header className="nav-shell">
@@ -1081,17 +1097,18 @@ export default function Home() {
           </div>
           <div className="nav-actions">
             <div className="nav-role-switch" aria-label="Switch LocalMate role">
-              <button className={role === "resident" ? "active" : ""} onClick={() => {
-                setRole("resident");
-                window.setTimeout(() => void refreshLiveJobBoard(), 80);
-              }}>Resident</button>
-              <button className={role === "helper" ? "active" : ""} onClick={() => {
-                setRole("helper");
-                window.setTimeout(() => {
-                  document.getElementById("job-board")?.scrollIntoView({ behavior: "smooth" });
-                  void refreshLiveJobBoard();
-                }, 80);
-              }}>Helper</button>
+              <button
+                className={role === "resident" ? "active" : ""}
+                onClick={() => switchRole("resident")}
+              >
+                Resident
+              </button>
+              <button
+                className={role === "helper" ? "active" : ""}
+                onClick={() => switchRole("helper")}
+              >
+                Helper
+              </button>
             </div>
             <div className="wallet-control">
               <button className="wallet-button" onClick={() => wallet ? setWalletMenu(!walletMenu) : setCircleModal(true)}>
