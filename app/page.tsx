@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { decodeFunctionResult, encodeFunctionData, formatUnits, keccak256, parseUnits, toBytes } from "viem";
-import deploymentV3 from "../public/arc-v3-deployment.json";
+import deploymentV4 from "../public/arc-v4-deployment.json";
 import CircleWalletModal from "./CircleWalletModal";
 import ExternalWalletModal, { type Eip1193Provider } from "./ExternalWalletModal";
 import { reownAppKit } from "./reown-appkit";
@@ -64,7 +64,7 @@ type EvidenceRecord = {
   type: string;
 };
 
-const v3Abi = [
+const v4Abi = [
   { type: "function", name: "nextJobId", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "jobs", stateMutability: "view", inputs: [{ name: "jobId", type: "uint256" }], outputs: [{ name: "client", type: "address" }, { name: "provider", type: "address" }, { name: "evaluator", type: "address" }, { name: "budget", type: "uint128" }, { name: "workDeadline", type: "uint64" }, { name: "submittedAt", type: "uint64" }, { name: "status", type: "uint8" }, { name: "requirementsHash", type: "bytes32" }, { name: "applicationHash", type: "bytes32" }, { name: "evidenceHash", type: "bytes32" }, { name: "evidenceUriHash", type: "bytes32" }, { name: "disputeHash", type: "bytes32" }] },
   { type: "function", name: "createJob", stateMutability: "nonpayable", inputs: [{ name: "evaluator", type: "address" }, { name: "budget", type: "uint128" }, { name: "expiresAt", type: "uint64" }, { name: "requirementsHash", type: "bytes32" }], outputs: [{ name: "jobId", type: "uint256" }] },
@@ -179,7 +179,7 @@ const helpers: Helper[] = [
 ];
 
 const activity = [
-  ["V4 Circle-ready payout", "Completed", "+0.00975 USDC", "verified onchain"],
+  ["V4 verified payout", "Completed", "+0.00975 USDC", "verified onchain"],
   ["Shelf assembly · Tower A", "Funded", "18.00 USDC", "4 min ago"],
   ["Home cleaning · Tower C", "Submitted", "14.00 USDC", "11 min ago"],
 ];
@@ -647,13 +647,13 @@ export default function Home() {
     setLiveError("");
     setBoardBusy("Reading funded jobs from Arc...");
     try {
-      const nextJobData = encodeFunctionData({ abi: v3Abi, functionName: "nextJobId" });
+      const nextJobData = encodeFunctionData({ abi: v4Abi, functionName: "nextJobId" });
       const rawNextJobId = await arcPublicRpc(
         "eth_call",
-        [{ to: deploymentV3.contractAddress, data: nextJobData }, "latest"],
+        [{ to: deploymentV4.contractAddress, data: nextJobData }, "latest"],
       ) as `0x${string}`;
       const nextJobId = decodeFunctionResult({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "nextJobId",
         data: rawNextJobId,
       });
@@ -664,13 +664,13 @@ export default function Home() {
       const jobs: LiveJobRecord[] = [];
 
       for (let jobId = firstJobId; jobId < nextJobId; jobId += 1n) {
-        const data = encodeFunctionData({ abi: v3Abi, functionName: "jobs", args: [jobId] });
+        const data = encodeFunctionData({ abi: v4Abi, functionName: "jobs", args: [jobId] });
         const raw = await arcPublicRpc(
           "eth_call",
-          [{ to: deploymentV3.contractAddress, data }, "latest"],
+          [{ to: deploymentV4.contractAddress, data }, "latest"],
         ) as `0x${string}`;
         const decoded = decodeFunctionResult({
-          abi: v3Abi,
+          abi: v4Abi,
           functionName: "jobs",
           data: raw,
         });
@@ -719,16 +719,16 @@ export default function Home() {
         throw new Error("The client wallet cannot apply to its own job. Switch to the helper wallet.");
       }
       const digestData = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "applicationDigest",
         args: [job.id, account as `0x${string}`],
       });
       const rawDigest = await arcPublicRpc(
         "eth_call",
-        [{ to: deploymentV3.contractAddress, data: digestData }, "latest"],
+        [{ to: deploymentV4.contractAddress, data: digestData }, "latest"],
       ) as `0x${string}`;
       const digest = decodeFunctionResult({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "applicationDigest",
         data: rawDigest,
       });
@@ -787,18 +787,18 @@ export default function Home() {
       const account = await activeAccount();
 
       setLiveBusy("Creating job on Arc...");
-      const nextJobData = encodeFunctionData({ abi: v3Abi, functionName: "nextJobId" });
+      const nextJobData = encodeFunctionData({ abi: v4Abi, functionName: "nextJobId" });
       const rawJobId = await arcPublicRpc(
         "eth_call",
-        [{ to: deploymentV3.contractAddress, data: nextJobData }, "latest"],
+        [{ to: deploymentV4.contractAddress, data: nextJobData }, "latest"],
       ) as `0x${string}`;
-      const jobId = decodeFunctionResult({ abi: v3Abi, functionName: "nextJobId", data: rawJobId });
+      const jobId = decodeFunctionResult({ abi: v4Abi, functionName: "nextJobId", data: rawJobId });
       const latestBlock = await arcPublicRpc(
         "eth_getBlockByNumber",
         ["latest", false],
       ) as { timestamp: string };
       const createData = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "createJob",
         args: [
           account as `0x${string}`,
@@ -807,19 +807,19 @@ export default function Home() {
           keccak256(toBytes(task)),
         ],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, createData, "Create job");
+      await sendLiveTransaction(deploymentV4.contractAddress, createData, "Create job");
 
       setLiveBusy(`Approving ${budgetUsdc} USDC...`);
       const approveData = encodeFunctionData({
         abi: usdcAbi,
         functionName: "approve",
-        args: [deploymentV3.contractAddress as `0x${string}`, budgetUnits],
+        args: [deploymentV4.contractAddress as `0x${string}`, budgetUnits],
       });
       await sendLiveTransaction("0x3600000000000000000000000000000000000000", approveData, "Approve USDC");
 
       setLiveBusy("Funding escrow...");
-      const fundData = encodeFunctionData({ abi: v3Abi, functionName: "fund", args: [jobId] });
-      await sendLiveTransaction(deploymentV3.contractAddress, fundData, "Fund escrow");
+      const fundData = encodeFunctionData({ abi: v4Abi, functionName: "fund", args: [jobId] });
+      await sendLiveTransaction(deploymentV4.contractAddress, fundData, "Fund escrow");
       setLiveJobId(jobId);
       setLiveStage("funded");
       setJobStage("open");
@@ -847,7 +847,7 @@ export default function Home() {
     setLiveBusy("Assigning selected applicant...");
     try {
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "assignProvider",
         args: [
           liveJobId,
@@ -855,7 +855,7 @@ export default function Home() {
           application.signature as `0x${string}`,
         ],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Assign provider");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Assign provider");
       setLiveProvider(providerAddress);
       setLiveStage("assigned");
       setJobStage("assigned");
@@ -874,11 +874,11 @@ export default function Home() {
     setLiveBusy("Cancelling job and returning escrow...");
     try {
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "cancelUnassigned",
         args: [liveJobId],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Cancel and refund");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Cancel and refund");
       setLiveStage("cancelled");
       setJobStage("review");
       setShowMatches(false);
@@ -905,7 +905,7 @@ export default function Home() {
       if (!response.ok) throw new Error(record.error || "Evidence upload failed.");
       setLiveBusy("Anchoring evidence hash on Arc...");
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "submitEvidence",
         args: [
           liveJobId,
@@ -913,7 +913,7 @@ export default function Home() {
           keccak256(toBytes(record.uri)),
         ],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Anchor evidence");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Anchor evidence");
       setEvidenceRecord(record);
       setLiveStage("submitted");
     } catch (error) {
@@ -929,11 +929,11 @@ export default function Home() {
     setLiveBusy("Rejecting evidence and returning escrow...");
     try {
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "reject",
         args: [liveJobId, keccak256(toBytes("Resident rejected the submitted evidence"))],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Reject and refund");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Reject and refund");
       setLiveStage("rejected");
       setNotice(`Live job #${liveJobId} rejected. Escrow was returned to the resident.`);
     } catch (error) {
@@ -949,11 +949,11 @@ export default function Home() {
     setLiveBusy("Opening an onchain dispute...");
     try {
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "raiseDispute",
         args: [liveJobId, keccak256(toBytes("The parties requested human review"))],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Raise dispute");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Raise dispute");
       setLiveStage("disputed");
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : "Dispute failed. Use the resident or assigned provider wallet.");
@@ -968,11 +968,11 @@ export default function Home() {
     setLiveBusy("Resolving dispute on Arc...");
     try {
       const data = encodeFunctionData({
-        abi: v3Abi,
+        abi: v4Abi,
         functionName: "resolveDispute",
         args: [liveJobId, providerShareBps],
       });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Resolve dispute");
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Resolve dispute");
       setLiveStage("completed");
       setNotice(`Live job #${liveJobId} dispute resolved on Arc.`);
     } catch (error) {
@@ -987,8 +987,8 @@ export default function Home() {
     setLiveError("");
     setLiveBusy("Approving payout...");
     try {
-      const data = encodeFunctionData({ abi: v3Abi, functionName: "complete", args: [liveJobId] });
-      await sendLiveTransaction(deploymentV3.contractAddress, data, "Complete and payout");
+      const data = encodeFunctionData({ abi: v4Abi, functionName: "complete", args: [liveJobId] });
+      await sendLiveTransaction(deploymentV4.contractAddress, data, "Complete and payout");
       setLiveStage("completed");
       setNotice(`Live job #${liveJobId} completed and paid on Arc.`);
     } catch (error) {
@@ -1487,7 +1487,7 @@ export default function Home() {
       <section id="arc" className="arc-section">
         <div className="wrap arc-grid">
           <div className="scroll-reveal reveal-left">
-            <p className="kicker light">PROGRAMMABLE SETTLEMENT ON ARC</p>
+            <p className="kicker light">ARC + CIRCLE USER-CONTROLLED WALLET</p>
             <h2>Friendly on the surface.<br />Verifiable underneath.</h2>
             <p>Every job follows a transparent lifecycle. Private home details stay offchain; the payment and completion record stay verifiable.</p>
             <a href="https://docs.arc.io/build/agentic-economy" target="_blank">Explore the Arc integration →</a>
@@ -1502,11 +1502,11 @@ export default function Home() {
           </div>
         </div>
         <div className="wrap arc-tech-grid">
-          <a className="scroll-reveal reveal-delay-1" href={`https://testnet.arcscan.app/address/${deploymentV3.contractAddress}`} target="_blank">
+          <a className="scroll-reveal reveal-delay-1" href={`https://testnet.arcscan.app/address/${deploymentV4.contractAddress}`} target="_blank">
             <span className="tech-icon">⌁</span><i>LIVE</i>
-            <h3>Arc escrow V4</h3>
-            <p>Circle SCA support, signed consent, evidence anchoring, disputes and programmable USDC settlement.</p>
-            <small>{deploymentV3.contractAddress.slice(0, 8)}…{deploymentV3.contractAddress.slice(-6)} ↗</small>
+            <h3>Arc escrow + Circle Wallet</h3>
+            <p>Circle User-Controlled Wallet onboarding, SCA signatures, evidence anchoring, disputes and programmable USDC settlement.</p>
+            <small>{deploymentV4.contractAddress.slice(0, 8)}…{deploymentV4.contractAddress.slice(-6)} ↗</small>
           </a>
           <a className="scroll-reveal reveal-delay-2" href="https://developers.circle.com/gateway/nanopayments" target="_blank">
             <span className="tech-icon">ϟ</span><i>PLANNED</i>
@@ -1533,7 +1533,7 @@ export default function Home() {
             <a
               className="activity-row"
               key={item[0]}
-              href={index === 0 ? `https://testnet.arcscan.app/tx/${deploymentV3.payoutTxHash}` : "https://testnet.arcscan.app"}
+              href={index === 0 ? `https://testnet.arcscan.app/tx/${deploymentV4.payoutTxHash}` : "https://testnet.arcscan.app"}
               target="_blank"
             >
               <b>{item[0]}</b><span className={item[1].toLowerCase()}>{item[1]}</span><strong>{item[2]}</strong><small>{item[3]}</small>
@@ -1541,8 +1541,8 @@ export default function Home() {
           ))}
           <div className="deployment-proof">
             <span>LIVE DEMO CONTRACT</span>
-            <code>{deploymentV3.contractAddress}</code>
-            <a href={`https://testnet.arcscan.app/address/${deploymentV3.contractAddress}`} target="_blank">Inspect V4 contract ↗</a>
+            <code>{deploymentV4.contractAddress}</code>
+            <a href={`https://testnet.arcscan.app/address/${deploymentV4.contractAddress}`} target="_blank">Inspect V4 contract ↗</a>
           </div>
         </div>
       </section>

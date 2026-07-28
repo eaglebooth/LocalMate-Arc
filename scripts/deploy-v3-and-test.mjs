@@ -267,5 +267,5 @@ const output = {
     cancellationRefund: cancelHash,
   },
 };
-fs.writeFileSync("public/arc-v3-deployment.json", JSON.stringify(output, null, 2));
+fs.writeFileSync("public/legacy-arc-v3-deployment.json", JSON.stringify(output, null, 2));
 console.log(JSON.stringify(output, null, 2));

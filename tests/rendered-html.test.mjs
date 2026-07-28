@@ -1,91 +1,66 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
-const templateRoot = new URL("../", import.meta.url);
-const previewRoot = new URL("../app/_sites-preview/", import.meta.url);
+const root = new URL("../", import.meta.url);
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+async function source(path) {
+  return readFile(new URL(path, root), "utf8");
 }
 
-test("server-renders the starter loading skeleton", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+test("uses the current LocalMateJobsV4 deployment everywhere active", async () => {
+  const [page, readme, architecture, deploymentText] = await Promise.all([
+    source("app/page.tsx"),
+    source("README.md"),
+    source("ARCHITECTURE.md"),
+    source("public/arc-v4-deployment.json"),
+  ]);
+  const deployment = JSON.parse(deploymentText);
 
-  const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
-  assert.match(html, /<title>Your site is taking shape<\/title>/i);
-  assert.match(html, /Building your site/);
-  assert.match(html, /Your site is taking shape/);
-  assert.match(
-    html,
-    /Your first version will appear here automatically when it’s ready\./,
+  assert.equal(deployment.version, "V4");
+  assert.equal(
+    deployment.contractAddress,
+    "0x496d1ed6cd0bd0d0c426e5b12683a4daf93b3cef",
   );
-  assert.doesNotMatch(html, /Codex/);
-  assert.match(html, /react-loading-skeleton/);
-  assert.match(html, /role="status"/);
+  assert.equal(deployment.supportsCircleSCA, true);
+  assert.match(page, /arc-v4-deployment\.json/);
+  assert.match(page, /const v4Abi =/);
+  assert.doesNotMatch(page, /deploymentV3|v3Abi|arc-v3-deployment/);
+  assert.match(readme, new RegExp(deployment.contractAddress, "i"));
+  assert.match(architecture, new RegExp(deployment.contractAddress, "i"));
 });
 
-test("keeps the loading skeleton scoped and disposable", async () => {
-  const [preview, css, page, layout, packageJson, files] = await Promise.all([
-    readFile(new URL("SkeletonPreview.tsx", previewRoot), "utf8"),
-    readFile(new URL("preview.css", previewRoot), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readdir(previewRoot),
+test("contains a real Circle User-Controlled Wallet integration", async () => {
+  const [modal, route, session, contract, readme] = await Promise.all([
+    source("app/CircleWalletModal.tsx"),
+    source("app/api/circle/route.ts"),
+    source("app/circle-wallet-session.ts"),
+    source("contracts/LocalMateJobsV4.sol"),
+    source("README.md"),
   ]);
 
-  assert.deepEqual(files.sort(), ["SkeletonPreview.tsx", "preview.css"]);
-  assert.match(preview, /from "react-loading-skeleton"/);
-  assert.match(preview, /baseColor="#eceae7"/);
-  assert.match(preview, /highlightColor="#f9f8f6"/);
-  assert.match(preview, /duration=\{2\.8\}/);
-  assert.match(preview, /sites-skeleton-search-placeholder/);
-  assert.match(packageJson, /"react-loading-skeleton": "3\.5\.0"/);
+  assert.match(modal, /@circle-fin\/w3s-pw-web-sdk/);
+  assert.match(modal, /SocialLoginProvider\.GOOGLE/);
+  assert.match(modal, /initializeUser/);
+  assert.match(route, /blockchains:\s*\["ARC-TESTNET"\]/);
+  assert.match(route, /\/v1\/w3s\/user\/transactions\/contractExecution/);
+  assert.match(session, /executeCircleChallenge/);
+  assert.match(contract, /interface IERC1271/);
+  assert.match(contract, /IERC1271\.isValidSignature/);
+  assert.match(readme, /Circle User-Controlled Wallet/);
+});
 
-  const shellIndex = preview.indexOf('className="sites-skeleton-shell"');
-  const statusIndex = preview.indexOf('className="sites-skeleton-status"');
-  assert.ok(shellIndex >= 0 && statusIndex > shellIndex);
-  assert.match(css, /position:\s*fixed/);
-  assert.match(css, /inset:\s*0/);
-  assert.match(css, /opacity:\s*0\.52/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.doesNotMatch(css, /#020617|canvas|pets|progress/i);
-  assert.doesNotMatch(
-    preview,
-    /loading-spinner|status-mark|status-progress|canvas|cookie|random/i,
-  );
+test("keeps Circle claims aligned with verified onchain evidence", async () => {
+  const [readme, deploymentText] = await Promise.all([
+    source("README.md"),
+    source("public/arc-v4-deployment.json"),
+  ]);
+  const deployment = JSON.parse(deploymentText);
 
-  assert.match(page, /export const metadata:\s*Metadata/);
-  assert.match(page, /"codex-preview": "development"/);
-  assert.match(page, /<SkeletonPreview \/>/);
-  assert.match(layout, /title:\s*"Starter Project"/);
-  assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);
-  assert.doesNotMatch(css, /(^|\s)(html|body)\s*\{/m);
-
-  await assert.rejects(
-    access(new URL("public/_sites-preview", templateRoot)),
+  assert.match(deployment.payoutTxHash, /^0x[a-f0-9]{64}$/i);
+  assert.match(deployment.latestLiveRound.createTxHash, /^0x[a-f0-9]{64}$/i);
+  assert.match(
+    readme,
+    /complete Circle-wallet-signed lifecycle will only be marked\s+verified/i,
   );
 });

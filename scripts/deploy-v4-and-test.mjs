@@ -136,6 +136,6 @@ const deployment = {
   version: "V4",
   supportsCircleSCA: true,
 };
-fs.writeFileSync("public/arc-v3-deployment.json", `${JSON.stringify(deployment, null, 2)}\n`);
+fs.writeFileSync("public/arc-v4-deployment.json", `${JSON.stringify(deployment, null, 2)}\n`);
 fs.writeFileSync("public/arc-v4-abi.json", `${JSON.stringify(abi, null, 2)}\n`);
 console.log(JSON.stringify(deployment, null, 2));

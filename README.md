@@ -9,10 +9,10 @@ rejects or disputes settlement.
 
 - Network: Arc Testnet (`5042002`)
 - Contract: `LocalMateJobsV4`
-- Address: `0xfec759cb31f16df8714ed847de92ae9300e4cc36`
+- Address: `0x496d1ed6cd0bd0d0c426e5b12683a4daf93b3cef`
 - Settlement asset: Arc USDC
 - Explorer:
-  https://testnet.arcscan.app/address/0xfec759cb31f16df8714ed847de92ae9300e4cc36
+  https://testnet.arcscan.app/address/0x496d1ed6cd0bd0d0c426e5b12683a4daf93b3cef
 
 The V4 test suite verified:
 
@@ -25,7 +25,28 @@ The V4 test suite verified:
 - zero residual escrow after the test scenarios.
 
 The detailed deployment proof is stored in
-`public/arc-v3-deployment.json`.
+`public/arc-v4-deployment.json`.
+
+## Circle User-Controlled Wallet
+
+LocalMate integrates Circle Wallets as a real onboarding and transaction path,
+not only as a visual mock:
+
+- Google social login is handled by Circle's User-Controlled Wallet Web SDK.
+- Circle creates or restores a user-owned SCA wallet on `ARC-TESTNET`.
+- The frontend loads the Circle wallet address and USDC balance through the
+  authenticated Circle Wallets API.
+- Users authorize contract executions through Circle challenge and
+  Confirmation UI flows; LocalMate never receives a wallet private key.
+- The frontend has a Circle contract-execution adapter for V4 job creation,
+  USDC approval, escrow funding, evidence submission and settlement.
+- `LocalMateJobsV4` accepts both ordinary EOA signatures and Circle SCA
+  signatures through ERC-1271 verification.
+
+Circle Wallet onboarding has created a real Arc Testnet user wallet. The
+repository also contains a verified V4 lifecycle completed with funded EOA
+test wallets. A complete Circle-wallet-signed lifecycle will only be marked
+verified after its Circle transaction hashes are recorded on Arcscan.
 
 ## User journey
 
@@ -85,6 +106,10 @@ Live:
 - wallet-signed applications
 - evidence anchoring
 - payout, refund and dispute settlement
+- Circle User-Controlled Wallet onboarding with Google
+- Circle Arc Testnet wallet creation/recovery, address and USDC balance
+- Circle contract-execution and signing adapter
+- EOA and Circle SCA signature support in `LocalMateJobsV4`
 
 Planned, not presented as live:
 
@@ -103,8 +128,8 @@ official ERC-8183 reference implementation.
 - [x] Contract deployed on Arc Testnet
 - [x] End-to-end USDC settlement transactions
 - [x] Architecture documentation
-- [ ] Public production deployment
-- [ ] Public GitHub repository
+- [x] Public production deployment
+- [x] Public GitHub repository
 - [ ] Three-minute pitch and demo video
 - [ ] Final submission links
 

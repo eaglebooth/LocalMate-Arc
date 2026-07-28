@@ -14,7 +14,7 @@ import { arcTestnet } from "viem/chains";
 const RPC = process.env.ARC_RPC_URL || "https://rpc.blockdaemon.testnet.arc.network";
 const USDC = "0x3600000000000000000000000000000000000000";
 const BUDGET = 10_000n;
-const deployment = JSON.parse(fs.readFileSync("public/arc-v3-deployment.json", "utf8"));
+const deployment = JSON.parse(fs.readFileSync("public/arc-v4-deployment.json", "utf8"));
 const abi = JSON.parse(fs.readFileSync("public/arc-v4-abi.json", "utf8"));
 const contract = deployment.contractAddress;
 
@@ -119,5 +119,5 @@ deployment.latestLiveRound = {
   completedAt: new Date().toISOString(),
 };
 deployment.payoutTxHash = payoutReceipt.transactionHash;
-fs.writeFileSync("public/arc-v3-deployment.json", `${JSON.stringify(deployment, null, 2)}\n`);
+fs.writeFileSync("public/arc-v4-deployment.json", `${JSON.stringify(deployment, null, 2)}\n`);
 console.log(JSON.stringify(deployment.latestLiveRound, null, 2));

@@ -4,20 +4,26 @@
 
 ```mermaid
 flowchart LR
-  R[Resident wallet] --> UI[LocalMate web app]
-  H[Helper wallet] --> UI
+  R[Resident EOA or Circle Wallet] --> UI[LocalMate web app]
+  H[Helper EOA or Circle Wallet] --> UI
+  UI --> C[Circle User-Controlled Wallet SDK/API]
   UI --> RPC[Arc Testnet RPC]
-  UI --> V3[LocalMateJobsV3]
-  V3 --> U[Arc USDC escrow]
+  C --> SCA[Circle SCA on Arc Testnet]
+  SCA --> V4[LocalMateJobsV4]
+  RPC --> V4
+  V4 --> U[Arc USDC escrow]
   H --> E[Evidence upload]
   E --> HASH[SHA-256 + URI hash]
-  HASH --> V3
+  HASH --> V4
 ```
 
-LocalMateJobsV3 is deployed on Arc Testnet and handles job creation, USDC
+LocalMateJobsV4 is deployed at
+`0x496d1ed6cd0bd0d0c426e5b12683a4daf93b3cef` on Arc Testnet and handles job creation, USDC
 funding, signed helper consent, evidence anchoring, approval, refund and
-dispute settlement. Private task details and evidence bytes stay off-chain;
-the evidence hash and URI hash are anchored on-chain.
+dispute settlement. It verifies both EOA signatures and Circle SCA signatures
+through ERC-1271. Circle's Web SDK provides Google social login, user-controlled
+wallet creation/recovery and user-approved contract execution. Private task
+details and evidence bytes stay off-chain; their hashes are anchored on-chain.
 
 ## Planned extensions
 
@@ -26,7 +32,7 @@ own live transactions are available:
 
 - ERC-8004: register the LocalMate matching agent and publish reputation.
 - Gateway/x402: let the matching agent buy a paid Trust Review API per request.
-- ERC-8183: add an adapter or migrate the V3 lifecycle to the official
+- ERC-8183: add an adapter or migrate the V4 lifecycle to the official
   reference contract without creating a second escrow source of truth.
 
 This separation keeps the current payout flow testable while leaving a clear

@@ -1,30 +1,39 @@
 # LocalMate on Arc
 
-LocalMate targets Arc Testnet (chain ID `5042002`) at
-`https://rpc.testnet.arc.network`. USDC is the native gas token and the
-explorer is `https://testnet.arcscan.app`.
+LocalMate runs on Arc Testnet (chain ID `5042002`) using
+`https://rpc.testnet.arc.network`. USDC is used for escrow and settlement, and
+transactions are verifiable through `https://testnet.arcscan.app`.
 
-## Implemented in this review build
+## Implemented
 
-- The wallet button requests and switches to the official Arc Testnet network.
-- The product UI models an ERC-8183-style job lifecycle:
-  `Open → Funded → Submitted → Completed / Rejected / Expired`.
-- `contracts/LocalMateJobs.sol` implements USDC escrow, evaluator settlement,
-  refunds after expiry, evidence hashes, and a bounded platform fee.
-- `public/agent-metadata.json` is ready to be published and passed to the Arc
-  ERC-8004 Identity Registry.
-- Private addresses, task descriptions, images, and identity documents are
-  intentionally kept offchain.
+- Circle User-Controlled Wallet uses Google social authentication through
+  `@circle-fin/w3s-pw-web-sdk`.
+- Circle creates or restores an SCA wallet on `ARC-TESTNET`; LocalMate displays
+  its address and USDC balance without receiving a private key.
+- Circle challenge execution is wired to V4 contract calls and signatures.
+- External EVM wallets remain available through Reown AppKit.
+- The product implements an ERC-8183-style lifecycle:
+  `Open -> Funded -> Submitted -> Completed / Rejected / Disputed`.
+- `contracts/LocalMateJobsV4.sol` implements USDC escrow, Circle SCA/EOA
+  signature verification, evaluator settlement, refunds, evidence hashes, and
+  a bounded platform fee.
+- Private addresses, task descriptions, identity documents and evidence files
+  stay off-chain; only the required hashes and settlement state are anchored.
 
-## Deployment checklist
+## Current deployment
 
-1. Confirm the current Arc Testnet USDC address from the official contract
-   address page.
-2. Compile and test `LocalMateJobs.sol` with Foundry or Hardhat.
-3. Deploy with a funded Arc Testnet wallet and set the treasury and fee.
-4. Publish `agent-metadata.json` to a stable public or IPFS URI.
-5. Register the matching agent through the official ERC-8004 Identity Registry.
-6. Store the deployed job contract and agent ID as runtime environment values.
-7. Replace the review dataset with indexed contract events.
+- Contract: `LocalMateJobsV4`
+- Address: `0x496d1ed6cd0bd0d0c426e5b12683a4daf93b3cef`
+- Deployment proof: `public/arc-v4-deployment.json`
+- Live app: `https://localmate-nine.vercel.app`
+
+## Verification status
+
+The V4 contract lifecycle and USDC payout have been verified on-chain with two
+funded Arc Testnet EOA wallets. Circle User-Controlled Wallet onboarding,
+wallet creation/recovery, address lookup, balance lookup and transaction
+challenge adapters are live. A complete Circle-wallet-signed lifecycle should
+only be labelled verified after its Circle transaction hashes are captured on
+Arcscan.
 
 No production private key belongs in this repository or in client-side code.
