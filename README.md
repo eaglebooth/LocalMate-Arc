@@ -107,6 +107,8 @@ Live:
 - wallet-signed applications
 - evidence anchoring
 - shared Vercel Blob evidence previews verified against the Arc SHA-256 hash
+- cross-browser signed application exchange through Vercel Blob, with the
+  selected signature verified by LocalMateJobsV4 before assignment
 - payout, refund and dispute settlement
 - Circle User-Controlled Wallet onboarding with Google
 - Circle Arc Testnet wallet creation/recovery, address and USDC balance

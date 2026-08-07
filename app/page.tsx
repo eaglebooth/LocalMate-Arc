@@ -446,6 +446,13 @@ export default function Home() {
         }
         if (cancelled) return;
         setEvidenceRecord(record);
+        try {
+          const sharedApplications = await loadSharedApplications(liveJobId);
+          if (!cancelled) mergeApplications(liveJobId, sharedApplications);
+        } catch {
+          // Arc job state remains usable if shared application storage is briefly unavailable.
+        }
+        if (cancelled) return;
         setLiveClient(job.client);
         setLiveProvider(job.provider === "0x0000000000000000000000000000000000000000" ? "" : job.provider);
         setLiveEvaluator(job.evaluator);
@@ -472,6 +479,25 @@ export default function Home() {
     // readLiveJob is a stable component helper; rerun only when the active job changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveJobId]);
+
+  useEffect(() => {
+    if (jobStage !== "open" || liveJobId === null) return;
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const sharedApplications = await loadSharedApplications(liveJobId);
+        if (!cancelled) mergeApplications(liveJobId, sharedApplications);
+      } catch {
+        // The manual refresh button remains available during a transient storage error.
+      }
+    };
+    void sync();
+    const interval = window.setInterval(() => void sync(), 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [jobStage, liveJobId]);
 
   const taskCategory = useMemo(() => detectCategory(task), [task]);
   const budgetUnits = useMemo(() => {
@@ -606,6 +632,30 @@ export default function Home() {
       requirementsHash: decoded[7],
       evidenceHash: decoded[9],
     };
+  }
+
+  async function loadSharedApplications(jobId: bigint) {
+    const response = await fetch(`/api/applications?jobId=${jobId}`, { cache: "no-store" });
+    const payload = await response.json() as { applications?: LiveApplication[]; error?: string };
+    if (!response.ok) throw new Error(payload.error || "Could not load shared applications.");
+    return payload.applications ?? [];
+  }
+
+  async function publishSharedApplication(application: LiveApplication) {
+    const response = await fetch("/api/applications", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(application),
+    });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(payload.error || "Could not publish the signed application.");
+  }
+
+  function mergeApplications(jobId: bigint, shared: LiveApplication[]) {
+    setLiveApplications((current) => [
+      ...current.filter((item) => item.jobId !== jobId.toString()),
+      ...shared,
+    ]);
   }
 
   async function requireLiveRole(required: "provider" | "evaluator" | "party") {
@@ -901,10 +951,17 @@ export default function Home() {
         }
       }
       setLiveJobs(jobs);
+      const openJobIds = new Set(jobs.map((job) => job.id.toString()));
+      const localApplications = liveApplications.filter((application) => openJobIds.has(application.jobId));
+      if (localApplications.length > 0) {
+        await Promise.allSettled(localApplications.map((application) => publishSharedApplication(application)));
+      }
       const ownedJob = wallet
         ? jobs.find((job) => job.client.toLowerCase() === wallet.toLowerCase())
         : undefined;
       if (ownedJob) {
+        const sharedApplications = await loadSharedApplications(ownedJob.id);
+        mergeApplications(ownedJob.id, sharedApplications);
         setLiveJobId(ownedJob.id);
         setLiveStage("funded");
         setBudgetUsdc(formatUnits(ownedJob.budget, 6));
@@ -981,9 +1038,26 @@ export default function Home() {
         ...items.filter((item) => !(item.jobId === application.jobId && item.provider.toLowerCase() === account.toLowerCase())),
         application,
       ]);
-      setNotice(`Application for live job #${job.id} signed by ${account.slice(0, 6)}...${account.slice(-4)}.`);
+      setBoardBusy(`Publishing application for job #${job.id}...`);
+      await publishSharedApplication(application);
+      setNotice(`Application for live job #${job.id} signed and shared by ${account.slice(0, 6)}...${account.slice(-4)}.`);
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : "Application signature failed.");
+    } finally {
+      setBoardBusy("");
+    }
+  }
+
+  async function refreshResidentApplications() {
+    if (liveJobId === null) return;
+    setLiveError("");
+    setBoardBusy("Refreshing applicants...");
+    try {
+      const sharedApplications = await loadSharedApplications(liveJobId);
+      mergeApplications(liveJobId, sharedApplications);
+      setNotice(`${sharedApplications.length} signed application${sharedApplications.length === 1 ? "" : "s"} loaded for job #${liveJobId}.`);
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Could not refresh applicants.");
     } finally {
       setBoardBusy("");
     }
@@ -1606,10 +1680,13 @@ export default function Home() {
                   <p>
                     {currentApplications.length
                       ? "Each application was signed by the applicant wallet. Selecting one records its consent hash on Arc."
-                      : "Switch to Helper, connect the second wallet and sign an application. A new Circle SCA may request one activation confirmation; no application fee is required."}
+                      : "Applications from eligible local helpers will appear here automatically. You stay in control and choose who gets the job."}
                   </p>
                 </div>
                 <div className="resident-job-actions">
+                  <button onClick={() => void refreshResidentApplications()} disabled={Boolean(boardBusy)}>
+                    {boardBusy || "Refresh applicants"}
+                  </button>
                   <button onClick={() => {
                     setRole("helper");
                     window.setTimeout(() => {
@@ -1672,7 +1749,7 @@ export default function Home() {
                           const nextFile = event.target.files?.[0] ?? null;
                           if (nextFile && nextFile.size > 1024 * 1024) {
                             setEvidenceFile(null);
-                            setLiveError("Evidence must be 1 MB or smaller for this Vercel demo.");
+                            setLiveError("Evidence must be 1 MB or smaller.");
                             event.target.value = "";
                             return;
                           }

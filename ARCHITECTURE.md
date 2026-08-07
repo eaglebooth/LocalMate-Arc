@@ -8,6 +8,7 @@ flowchart LR
   H[Helper EOA or Circle Wallet] --> UI
   UI --> C[Circle User-Controlled Wallet SDK/API]
   UI --> RPC[Arc Testnet RPC]
+  UI --> A[Vercel Blob signed applications]
   C --> SCA[Circle SCA on Arc Testnet]
   SCA --> V4[LocalMateJobsV4]
   RPC --> V4
@@ -29,6 +30,9 @@ details and evidence bytes stay off-chain; their hashes are anchored on-chain.
 Evidence files are shared through public, hard-to-guess Vercel Blob URLs with
 random suffixes. The app downloads each file and verifies its SHA-256 digest
 against the value recorded by LocalMateJobsV4 before showing it to the Resident.
+Wallet-signed Helper applications are also exchanged through Blob so Resident
+and Helper can use different browsers. Blob is only the transport layer: V4
+verifies the selected EOA or ERC-1271 signature before assigning the provider.
 
 ## Planned extensions
 
