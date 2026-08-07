@@ -603,12 +603,16 @@ export default function Home() {
   }
 
   async function arcPublicRpc(method: string, params: unknown[]) {
-    const response = await fetch("https://rpc.blockdaemon.testnet.arc.network", {
+    const response = await fetch("/api/arc-rpc", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+      cache: "no-store",
     });
-    if (!response.ok) throw new Error("Arc public RPC is temporarily unavailable.");
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(failure?.error?.message || "Arc Testnet is temporarily unavailable.");
+    }
     const payload = await response.json() as { result?: unknown; error?: { message?: string } };
     if (payload.error) throw new Error(payload.error.message || "Arc RPC request failed.");
     return payload.result;
@@ -1513,12 +1517,12 @@ export default function Home() {
               <div>
                 <p className="kicker">LIVE JOB BOARD ON ARC</p>
                 <h2>Funded work, ready for applicants.</h2>
-                <p>Every listing below is read from LocalMateJobsV4. Apply with an EOA or Circle smart-wallet signature. A new Circle SCA activates once before its first signature.</p>
+                <p>Every listing is funded and read from LocalMateJobsV4. Apply with your connected wallet to confirm availability and job terms.</p>
               </div>
               <div>
                 <button className="wallet-button" onClick={() => setCircleModal(true)}>
                   <span className="status-dot" />
-                  {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect only to apply"}
+                  {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect wallet to apply"}
                 </button>
                 <button className="refresh-board" onClick={() => void refreshLiveJobBoard()} disabled={Boolean(boardBusy)}>
                   {boardBusy || "Refresh from Arc"}

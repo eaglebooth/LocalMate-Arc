@@ -7,7 +7,8 @@ flowchart LR
   R[Resident EOA or Circle Wallet] --> UI[LocalMate web app]
   H[Helper EOA or Circle Wallet] --> UI
   UI --> C[Circle User-Controlled Wallet SDK/API]
-  UI --> RPC[Arc Testnet RPC]
+  UI --> P[Allowlisted same-origin RPC proxy]
+  P --> RPC[Arc Testnet RPC with failover]
   UI --> A[Vercel Blob signed applications]
   C --> SCA[Circle SCA on Arc Testnet]
   SCA --> V4[LocalMateJobsV4]
