@@ -85,7 +85,7 @@ const usdcAbi = [
   { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
 ] as const;
 
-const LIVE_SESSION_KEY = "localmate-live-session-v3";
+const LIVE_SESSION_KEY = "localmate-live-session-v4";
 const LIVE_JOBS_KEY = "localmate-live-job-metadata-v3";
 const LIVE_APPLICATIONS_KEY = "localmate-live-applications-v3";
 const LIVE_EVIDENCE_KEY_PREFIX = "localmate-live-evidence-v4:";
@@ -703,6 +703,27 @@ export default function Home() {
     return { account, job };
   }
 
+  function clearActiveWorkflowView() {
+    setRole("resident");
+    setShowMatches(false);
+    setJobStage("review");
+    setChosenHelper(null);
+    setLiveStage("idle");
+    setLiveJobId(null);
+    setLiveClient("");
+    setLiveProvider("");
+    setLiveEvaluator("");
+    setLiveBusy("");
+    setLiveError("");
+    setLiveTxs([]);
+    setLiveJobs([]);
+    setHelperJobs([]);
+    setEvidenceFile(null);
+    setEvidenceRecord(null);
+    setOnchainEvidenceHash("");
+    window.localStorage.removeItem(LIVE_SESSION_KEY);
+  }
+
   async function disconnectWallet() {
     const eth = injectedProvider();
     try {
@@ -723,6 +744,7 @@ export default function Home() {
     setCircleModalVersion((version) => version + 1);
     externalProviderRef.current = null;
     setWalletMenu(false);
+    clearActiveWorkflowView();
     setNotice("Wallet disconnected from LocalMate.");
   }
 
@@ -759,6 +781,7 @@ export default function Home() {
     setWalletKind("");
     setCircleBalance(null);
     setWalletMenu(false);
+    clearActiveWorkflowView();
     setCircleModalVersion((version) => version + 1);
     setCircleModal(true);
   }
