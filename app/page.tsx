@@ -467,7 +467,13 @@ export default function Home() {
           7: "cancelled",
         };
         const syncedStage = onchainStages[job.status];
-        if (syncedStage) setLiveStage(syncedStage);
+        if (syncedStage) {
+          setLiveStage(syncedStage);
+          if (syncedStage === "cancelled") {
+            setJobStage("review");
+            setShowMatches(false);
+          }
+        }
       } catch {
         // Keep the last known session state if Arc RPC is briefly unavailable.
       }
@@ -813,15 +819,25 @@ export default function Home() {
   }
 
   async function waitForPublicReceipt(hash: string) {
+    let lastRpcError = "";
     for (let attempt = 0; attempt < 120; attempt += 1) {
-      const receipt = await arcPublicRpc("eth_getTransactionReceipt", [hash]) as { status?: string } | null;
-      if (receipt) {
-        if (receipt.status !== "0x1") throw new Error("The Circle Wallet transaction reverted on Arc.");
-        return;
+      try {
+        const receipt = await arcPublicRpc("eth_getTransactionReceipt", [hash]) as { status?: string } | null;
+        if (receipt) {
+          if (receipt.status !== "0x1") throw new Error("The Circle Wallet transaction reverted on Arc.");
+          return;
+        }
+        lastRpcError = "";
+      } catch (error) {
+        lastRpcError = error instanceof Error ? error.message : "Arc RPC request failed.";
       }
       await new Promise((resolve) => window.setTimeout(resolve, 1000));
     }
-    throw new Error("Circle transaction confirmation timed out. Check Arcscan before retrying.");
+    throw new Error(
+      lastRpcError
+        ? `Transaction was submitted, but confirmation could not be refreshed (${lastRpcError}). Check Arcscan before retrying.`
+        : "Circle transaction confirmation timed out. Check Arcscan before retrying.",
+    );
   }
 
   async function sendCircleTransaction(to: string, data: string, label: string) {
@@ -1178,6 +1194,21 @@ export default function Home() {
       setShowMatches(false);
       setNotice(`Live job #${liveJobId} cancelled. Escrow was returned to the client wallet.`);
     } catch (error) {
+      // Circle can return the Arc hash before a temporary RPC/network failure interrupts
+      // receipt polling. Reconcile against the contract before telling the user the refund failed.
+      try {
+        const job = await readLiveJob(liveJobId);
+        if (job.status === 7) {
+          setLiveStage("cancelled");
+          setJobStage("review");
+          setShowMatches(false);
+          setLiveError("");
+          setNotice(`Live job #${liveJobId} cancelled. Escrow was returned to the client wallet.`);
+          return;
+        }
+      } catch {
+        // Preserve the original transaction error if reconciliation is also unavailable.
+      }
       setLiveError(error instanceof Error ? error.message : "Refund failed. Use the original client wallet.");
     } finally {
       setLiveBusy("");
