@@ -1055,6 +1055,18 @@ export default function Home() {
         )) {
           record.task = await loadSharedJobTask(jobId, decoded[7]);
         }
+        if (
+          record.task
+          && keccak256(toBytes(record.task)).toLowerCase() === decoded[7].toLowerCase()
+          && !sharedJobMetadataRef.current.has(jobId.toString())
+        ) {
+          try {
+            await publishSharedJobTask(jobId, record.task, decoded[7]);
+            sharedJobMetadataRef.current.add(jobId.toString());
+          } catch {
+            // Keep the Arc listing visible and retry metadata sharing on the next refresh.
+          }
+        }
         if (decoded[6] === 1 && decoded[1] === "0x0000000000000000000000000000000000000000") {
           jobs.push(record);
         }
@@ -1735,8 +1747,8 @@ export default function Home() {
                         <span><small>Expires</small><b>{new Date(Number(job.expiresAt) * 1000).toLocaleString()}</b></span>
                         <span><small>Client</small><b>{job.client.slice(0, 6)}...{job.client.slice(-4)}</b></span>
                       </div>
-                      <button onClick={() => void applyToLiveJob(job)} disabled={Boolean(boardBusy) || Boolean(application) || ownJob}>
-                        {ownJob ? "Your job - cannot apply" : application ? "Application signed ✓" : "Apply with connected wallet"} <span>→</span>
+                      <button onClick={() => void applyToLiveJob(job)} disabled={Boolean(boardBusy) || Boolean(application) || ownJob || !job.task}>
+                        {!job.task ? "Description unavailable - cannot apply" : ownJob ? "Your job - cannot apply" : application ? "Application signed ✓" : "Apply with connected wallet"} <span>→</span>
                       </button>
                       {application && <small className="signature-proof">Signature hash: {application.applicationHash.slice(0, 14)}...</small>}
                     </article>
