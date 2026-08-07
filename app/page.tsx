@@ -407,7 +407,10 @@ export default function Home() {
   useEffect(() => {
     if (liveJobId === null) return;
     let cancelled = false;
+    let syncing = false;
     const syncParticipants = async () => {
+      if (syncing) return;
+      syncing = true;
       try {
         const job = await readLiveJob(liveJobId);
         if (cancelled) return;
@@ -477,13 +480,20 @@ export default function Home() {
         }
       } catch {
         // Keep the last known session state if Arc RPC is briefly unavailable.
+      } finally {
+        syncing = false;
       }
     };
     void syncParticipants();
+    const syncInterval = window.setInterval(() => {
+      void syncParticipants();
+    }, 5_000);
     return () => {
       cancelled = true;
+      window.clearInterval(syncInterval);
     };
-    // readLiveJob is a stable component helper; rerun only when the active job changes.
+    // Keep the active workflow synchronized across Resident and Helper browsers.
+    // readLiveJob is a stable component helper; restart polling only when the active job changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveJobId]);
 
