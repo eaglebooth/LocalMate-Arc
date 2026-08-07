@@ -64,3 +64,15 @@ test("keeps Circle claims aligned with verified onchain evidence", async () => {
     /complete Circle-wallet-signed lifecycle will only be marked\s+verified/i,
   );
 });
+
+test("shares job descriptions across browsers with Arc hash integrity", async () => {
+  const [page, route] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/api/jobs/route.ts"),
+  ]);
+
+  assert.match(page, /publishSharedJobTask/);
+  assert.match(page, /loadSharedJobTask/);
+  assert.match(route, /keccak256\(toBytes\(item\.task\)\)/);
+  assert.match(route, /requirementsHash\.toLowerCase\(\)/);
+});

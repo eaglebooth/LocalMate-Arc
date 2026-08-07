@@ -309,6 +309,7 @@ export default function Home() {
   const [onchainEvidenceHash, setOnchainEvidenceHash] = useState("");
   const [storageHydrated, setStorageHydrated] = useState(false);
   const externalProviderRef = useRef<Eip1193Provider | null>(null);
+  const sharedJobMetadataRef = useRef(new Set<string>());
 
   useEffect(() => {
     const elements = document.querySelectorAll<HTMLElement>(".scroll-reveal");
@@ -414,6 +415,22 @@ export default function Home() {
       try {
         const job = await readLiveJob(liveJobId);
         if (cancelled) return;
+        try {
+          const localMetadata = JSON.parse(
+            window.localStorage.getItem(LIVE_JOBS_KEY) ?? "{}",
+          ) as Record<string, { task?: string }>;
+          const localTask = localMetadata[liveJobId.toString()]?.task;
+          if (
+            localTask
+            && keccak256(toBytes(localTask)).toLowerCase() === job.requirementsHash.toLowerCase()
+            && !sharedJobMetadataRef.current.has(liveJobId.toString())
+          ) {
+            await publishSharedJobTask(liveJobId, localTask, job.requirementsHash);
+            sharedJobMetadataRef.current.add(liveJobId.toString());
+          }
+        } catch {
+          // The onchain workflow remains valid; retry sharing on the next synchronization pass.
+        }
         let record: EvidenceRecord | null = null;
         try {
           const storedEvidence = window.localStorage.getItem(`${LIVE_EVIDENCE_KEY_PREFIX}${liveJobId}`);
@@ -660,6 +677,36 @@ export default function Home() {
     const payload = await response.json() as { applications?: LiveApplication[]; error?: string };
     if (!response.ok) throw new Error(payload.error || "Could not load shared applications.");
     return payload.applications ?? [];
+  }
+
+  async function loadSharedJobTask(jobId: bigint, requirementsHash: string) {
+    const response = await fetch(
+      `/api/jobs?jobId=${jobId}&requirementsHash=${encodeURIComponent(requirementsHash)}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) return undefined;
+    const metadata = await response.json() as { task?: string; requirementsHash?: string };
+    if (
+      !metadata.task
+      || keccak256(toBytes(metadata.task)).toLowerCase() !== requirementsHash.toLowerCase()
+      || metadata.requirementsHash?.toLowerCase() !== requirementsHash.toLowerCase()
+    ) return undefined;
+    return metadata.task;
+  }
+
+  async function publishSharedJobTask(jobId: bigint, taskDescription: string, requirementsHash: string) {
+    const response = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        jobId: jobId.toString(),
+        task: taskDescription,
+        requirementsHash,
+        createdAt: new Date().toISOString(),
+      }),
+    });
+    const payload = await response.json() as { error?: string };
+    if (!response.ok) throw new Error(payload.error || "Could not share this job description.");
   }
 
   async function publishSharedApplication(application: LiveApplication) {
@@ -1002,6 +1049,12 @@ export default function Home() {
             requirementsHash: decoded[7],
             task: metadata[jobId.toString()]?.task,
           };
+        if (!record.task && (
+          (decoded[6] === 1 && decoded[1] === "0x0000000000000000000000000000000000000000")
+          || (wallet && decoded[1].toLowerCase() === wallet.toLowerCase() && [2, 3, 4].includes(decoded[6]))
+        )) {
+          record.task = await loadSharedJobTask(jobId, decoded[7]);
+        }
         if (decoded[6] === 1 && decoded[1] === "0x0000000000000000000000000000000000000000") {
           jobs.push(record);
         }
@@ -1167,6 +1220,7 @@ export default function Home() {
         "eth_getBlockByNumber",
         ["latest", false],
       ) as { timestamp: string };
+      const requirementsHash = keccak256(toBytes(task));
       const createData = encodeFunctionData({
         abi: v4Abi,
         functionName: "createJob",
@@ -1174,7 +1228,7 @@ export default function Home() {
           account as `0x${string}`,
           budgetUnits,
           BigInt(latestBlock.timestamp) + 86_400n,
-          keccak256(toBytes(task)),
+          requirementsHash,
         ],
       });
       await sendLiveTransaction(deploymentV4.contractAddress, createData, "Create job");
@@ -1200,7 +1254,13 @@ export default function Home() {
       ) as Record<string, { task?: string; budget?: string }>;
       metadata[jobId.toString()] = { task, budget: budgetUsdc };
       window.localStorage.setItem(LIVE_JOBS_KEY, JSON.stringify(metadata));
-      setNotice(`Live Arc job #${jobId} is funded with ${budgetUsdc} USDC.`);
+      try {
+        await publishSharedJobTask(jobId, task, requirementsHash);
+        setNotice(`Live Arc job #${jobId} is funded with ${budgetUsdc} USDC and visible to helpers.`);
+      } catch (metadataError) {
+        setLiveError(metadataError instanceof Error ? metadataError.message : "The job is funded, but its description could not be shared.");
+        setNotice(`Live Arc job #${jobId} is funded. Retry before asking helpers to apply.`);
+      }
     } catch (error) {
       setLiveError(error instanceof Error ? error.message : "Live transaction failed.");
     } finally {
@@ -1669,7 +1729,7 @@ export default function Home() {
                         <i><b className="status-dot" /> Funded on Arc</i>
                       </div>
                       <h3>{job.task || "Private neighborhood service request"}</h3>
-                      <p>{job.task ? "Full brief available in this LocalMate session." : `Requirements anchored as ${job.requirementsHash.slice(0, 12)}...`}</p>
+                      <p>{job.task ? "Description verified against the requirements hash anchored on Arc." : `Description unavailable. Requirements anchored as ${job.requirementsHash.slice(0, 12)}...`}</p>
                       <div className="live-job-facts">
                         <span><small>Escrow</small><b>{formatUnits(job.budget, 6)} USDC</b></span>
                         <span><small>Expires</small><b>{new Date(Number(job.expiresAt) * 1000).toLocaleString()}</b></span>
