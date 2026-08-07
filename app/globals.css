@@ -111,6 +111,11 @@ a { color: inherit; text-decoration: none; }
 .helper-board-head > div:last-child { display: flex; gap: 10px; }
 .refresh-board { padding: 11px 15px; border: 0; border-radius: 999px; background: var(--ink); color: white; font-size: 11px; font-weight: 850; cursor: pointer; }
 .live-job-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+.helper-assigned-section { margin: 0 0 28px; padding: 24px; border: 1px solid #8fcdb0; border-radius: 20px; background: #dff3e8; }
+.helper-assigned-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 18px; }
+.helper-assigned-heading h3 { margin: 3px 0 0; font: 750 25px/1.1 var(--font-display); letter-spacing: -.7px; }
+.helper-assigned-heading > span { color: #477264; font-size: 12px; }
+.assigned-helper-job { border-color: #65b68d; box-shadow: 0 12px 35px rgba(20, 75, 55, .08); }
 .live-job-card { padding: 26px; border: 1px solid #bdd5ca; border-radius: 18px; background: white; }
 .live-job-title { display: flex; justify-content: space-between; align-items: center; color: #3f7961; font-size: 10px; font-weight: 900; letter-spacing: 1px; }
 .live-job-title i { padding: 6px 9px; border-radius: 20px; background: #e0f5e9; color: #287153; font-style: normal; letter-spacing: 0; }
@@ -456,7 +461,7 @@ footer { padding: 34px 0; background: #09231d; color: white; }
   .hero h1 { font-size: 46px; letter-spacing: -2.7px; }.hero-copy > p { font-size: 15px; }
   .composer-bottom { align-items: stretch; flex-direction: column; }.composer-bottom button { width: 100%; }
   .section-heading, .match-top { display: block; }.section-heading > p { margin-top: 24px; }
-  .helper-board-head { align-items: flex-start; flex-direction: column; }.helper-board-head > div:last-child { width: 100%; flex-direction: column; }.live-job-grid { grid-template-columns: 1fr; }
+  .helper-board-head { align-items: flex-start; flex-direction: column; }.helper-board-head > div:last-child { width: 100%; flex-direction: column; }.live-job-grid { grid-template-columns: 1fr; }.helper-assigned-heading { align-items: flex-start; flex-direction: column; }
   .live-job-facts { grid-template-columns: 1fr; }.live-job-facts span { border-left: 0; border-top: 1px solid var(--line); }.live-job-facts span:first-child { border-top: 0; }
   .service-grid { grid-template-columns: 1fr 1fr; }.service-card { min-height: 170px; }
   .parsed-task { margin-top: 25px; overflow-x: auto; }.parsed-task span { min-width: max-content; }

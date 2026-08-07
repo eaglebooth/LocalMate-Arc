@@ -295,6 +295,7 @@ export default function Home() {
   const [liveTxs, setLiveTxs] = useState<Array<{ label: string; hash: string }>>([]);
   const [budgetUsdc, setBudgetUsdc] = useState("7");
   const [liveJobs, setLiveJobs] = useState<LiveJobRecord[]>([]);
+  const [helperJobs, setHelperJobs] = useState<LiveJobRecord[]>([]);
   const [liveApplications, setLiveApplications] = useState<LiveApplication[]>([]);
   const [boardBusy, setBoardBusy] = useState("");
   const [walletMenu, setWalletMenu] = useState(false);
@@ -944,6 +945,7 @@ export default function Home() {
         window.localStorage.getItem(LIVE_JOBS_KEY) ?? "{}",
       ) as Record<string, { task?: string }>;
       const jobs: LiveJobRecord[] = [];
+      const assignedToConnectedHelper: LiveJobRecord[] = [];
 
       for (let jobId = firstJobId; jobId < nextJobId; jobId += 1n) {
         const data = encodeFunctionData({ abi: v4Abi, functionName: "jobs", args: [jobId] });
@@ -956,8 +958,7 @@ export default function Home() {
           functionName: "jobs",
           data: raw,
         });
-        if (decoded[6] === 1 && decoded[1] === "0x0000000000000000000000000000000000000000") {
-          jobs.push({
+        const record: LiveJobRecord = {
             id: jobId,
             client: decoded[0],
             provider: decoded[1],
@@ -967,10 +968,20 @@ export default function Home() {
             status: decoded[6],
             requirementsHash: decoded[7],
             task: metadata[jobId.toString()]?.task,
-          });
+          };
+        if (decoded[6] === 1 && decoded[1] === "0x0000000000000000000000000000000000000000") {
+          jobs.push(record);
+        }
+        if (
+          wallet
+          && decoded[1].toLowerCase() === wallet.toLowerCase()
+          && [2, 3, 4].includes(decoded[6])
+        ) {
+          assignedToConnectedHelper.push(record);
         }
       }
       setLiveJobs(jobs);
+      setHelperJobs(assignedToConnectedHelper);
       const openJobIds = new Set(jobs.map((job) => job.id.toString()));
       const localApplications = liveApplications.filter((application) => openJobIds.has(application.jobId));
       if (localApplications.length > 0) {
@@ -996,6 +1007,24 @@ export default function Home() {
     } finally {
       setBoardBusy("");
     }
+  }
+
+  function openHelperJob(job: LiveJobRecord) {
+    const stageByStatus: Partial<Record<number, LiveStage>> = {
+      2: "assigned",
+      3: "submitted",
+      4: "disputed",
+    };
+    setLiveJobId(job.id);
+    setLiveClient(job.client);
+    setLiveProvider(job.provider);
+    setLiveEvaluator(job.evaluator);
+    setBudgetUsdc(formatUnits(job.budget, 6));
+    setLiveStage(stageByStatus[job.status] ?? "assigned");
+    setJobStage("assigned");
+    setShowMatches(true);
+    setLiveError("");
+    window.setTimeout(() => document.getElementById("matches")?.scrollIntoView({ behavior: "smooth" }), 80);
   }
 
   async function applyToLiveJob(job: LiveJobRecord) {
@@ -1561,6 +1590,38 @@ export default function Home() {
               </div>
             </div>
 
+            {helperJobs.length > 0 && (
+              <div className="helper-assigned-section">
+                <div className="helper-assigned-heading">
+                  <div>
+                    <p className="kicker">MY ACTIVE WORK</p>
+                    <h3>You were selected for {helperJobs.length === 1 ? "this job" : `${helperJobs.length} jobs`}.</h3>
+                  </div>
+                  <span>Connected wallet verified on Arc</span>
+                </div>
+                <div className="live-job-grid">
+                  {helperJobs.map((job) => (
+                    <article className="live-job-card assigned-helper-job" key={`assigned-${job.id}`}>
+                      <div className="live-job-title">
+                        <span>JOB #{job.id.toString()}</span>
+                        <i><b className="status-dot" /> {job.status === 2 ? "Assigned to you" : job.status === 3 ? "Evidence submitted" : "In dispute"}</i>
+                      </div>
+                      <h3>{job.task || "Private neighborhood service request"}</h3>
+                      <p>The resident selected this wallet. Continue to the work and evidence step.</p>
+                      <div className="live-job-facts">
+                        <span><small>Escrow</small><b>{formatUnits(job.budget, 6)} USDC</b></span>
+                        <span><small>Deadline</small><b>{new Date(Number(job.expiresAt) * 1000).toLocaleString()}</b></span>
+                        <span><small>Resident</small><b>{job.client.slice(0, 6)}...{job.client.slice(-4)}</b></span>
+                      </div>
+                      <button onClick={() => openHelperJob(job)}>
+                        {job.status === 2 ? "Start work and upload evidence" : "Open job details"} <span>→</span>
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {liveJobs.length > 0 ? (
               <div className="live-job-grid">
                 {liveJobs.map((job) => {
@@ -1592,8 +1653,8 @@ export default function Home() {
             ) : (
               <div className="empty-board">
                 <span>⌁</span>
-                <h3>{boardBusy ? "Reading Arc Testnet..." : "No funded, unassigned jobs loaded."}</h3>
-                <p>Connect the Helper wallet and refresh. Any funded, unassigned Arc jobs will appear here.</p>
+                <h3>{boardBusy ? "Reading Arc Testnet..." : helperJobs.length ? "No other open jobs right now." : "No funded, unassigned jobs loaded."}</h3>
+                <p>{helperJobs.length ? "Your selected work is shown above." : "Connect the Helper wallet and refresh. Any funded, unassigned Arc jobs will appear here."}</p>
               </div>
             )}
             {liveError && <p className="live-error">{liveError}</p>}
